@@ -1,0 +1,7 @@
+﻿traveler_type,P0_sleep_quality,P1_rooms,P2_location
+Couple,0.7992,0.841,-0.8479
+Family with older children,-0.9234,-0.6561,0.6665
+Family with young children,-0.9687,-0.5439,0.556
+Group,-0.7515,-0.0102,0.0227
+Solo traveler,0.8214,-0.0448,0.0307
+Travelers with friends,-0.7349,-0.8946,0.9

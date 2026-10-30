@@ -1,0 +1,4 @@
+﻿weights,all,Couple,Family with older children,Family with young children,Group,Solo traveler,Travelers with friends
+동일 가중,0.274,0.2659,0.26,0.2536,0.2719,0.2979,0.2446
+HotelRec 전역 가중치,0.3011,0.2972,0.2786,0.275,0.2912,0.3197,0.2502
+배정된 페르소나 가중치,0.3014,0.2974,0.279,0.2756,0.2916,0.32,0.2511
