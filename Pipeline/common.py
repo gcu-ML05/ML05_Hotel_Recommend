@@ -73,6 +73,26 @@ def sample_candidates(df_all, users, pos_hotels, n_hotels, n_neg, rng):
     return cand
 
 
+def sample_city_candidates(df_all, users, pos_hotels, hotel_city, n_neg, rng):
+    """
+    같은 도시 후보: 정답 호텔과 같은 도시(hotel_map의 location)에 있고 사용자가 평가하지 않은 호텔 n_neg개.
+    "여행지를 정한 사용자가 그 도시 안에서 어느 호텔을 고르는가"를 평가한다.
+    후보가 n_neg개보다 적은 도시의 사용자는 평가에서 제외한다.
+    반환: (평가에 쓴 사용자 배열, (사용자 수, 1 + n_neg) 후보 배열)
+    """
+    rated = df_all.groupby("user_id").hotel_id.apply(set)
+    city_hotels = pd.Series(np.arange(len(hotel_city))).groupby(hotel_city).apply(np.array)
+    keep, cands = [], []
+    for u, h in zip(users, pos_hotels):
+        pool = city_hotels[hotel_city[h]]
+        pool = pool[~np.isin(pool, list(rated[u]))]
+        if len(pool) < n_neg:
+            continue
+        keep.append(u)
+        cands.append(np.r_[h, rng.choice(pool, size=n_neg, replace=False)])
+    return np.array(keep), np.array(cands)
+
+
 def ranking_metrics(scores, ks=(5, 10)):
     """
     scores: (사용자 수, 1 + n_neg), 0번 열이 정답 호텔 점수

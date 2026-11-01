@@ -8,7 +8,7 @@
     BiasBaseline       μ + b_u + b_i                                     (평점 예측 기준선)
     Popularity         호텔 리뷰 수                                        (Top-N 기준선)
     PersonaPopularity  같은 페르소나 사용자들이 높게 평가한 호텔 수           (제안서의 군집 기준선)
-    ItemKNN            메모리 기반 CF, adjusted cosine 유사도               (제안서 ①)
+    ItemKNN            메모리 기반 CF, 기준 예측 잔차 유사도 + 공동 방문 순위 점수 (제안서 ①)
     BiasedMF           모델 기반 CF, 편향 포함 행렬분해 + L2 + SGD           (제안서 ②)
     ContentBased       aspect 중요도 x 호텔 aspect 평균 + TF-IDF 유사도      (제안서 ③)
     하이브리드          λ·MF + (1-λ)·ContentBased (04_train_evaluate.py)    (제안서 ④)
@@ -16,7 +16,8 @@
 참고 문헌
     - Sarwar et al. (2001) Item-based collaborative filtering recommendation algorithms. WWW. (adjusted cosine)
     - Koren, Bell, Volinsky (2009) Matrix factorization techniques for recommender systems. IEEE Computer. (biased MF, SGD)
-    - Koren (2010) Factor in the neighbors. ACM TKDD. (정규화된 편향 기준선)
+    - Koren (2010) Factor in the neighbors. ACM TKDD. (정규화된 편향 기준선, KNNBaseline)
+    - Deshpande & Karypis (2004) Item-based top-N recommendation algorithms. ACM TOIS. (공동 방문 유사도 순위)
 """
 import time
 
@@ -90,50 +91,83 @@ class PersonaPopularity:
         return self.M[self.persona[u], i]
 
 
+def _top_k_rows(M, row_offset, k):
+    """밀집 행렬 M의 행마다 값이 큰 k개(양수만)를 (행, 열, 값)으로 반환"""
+    # np.argpartition: 전체 정렬 없이 상위 k개의 위치만 찾음 (순서는 보장하지 않음)
+    top = np.argpartition(-M, k, axis=1)[:, :k]
+    v = np.take_along_axis(M, top, axis=1)
+    keep = v > 0
+    return np.repeat(np.arange(row_offset, row_offset + len(M)), k)[keep.ravel()], top[keep], v[keep]
+
+
 class ItemKNN:
     """
     메모리 기반 CF (Item-kNN)
-        sim(i, j) = adjusted cosine  : 사용자 평균을 뺀 평점 벡터의 코사인 유사도
-                    x  n_ij / (n_ij + shrink)   : 함께 평가한 사용자 수가 적은 쌍의 유사도를 줄임
+
+    평점 예측 (predict)
+        b_ui = 기준 예측. center="baseline"이면 μ + b_u + b_i (KNNBaseline, Koren 2010),
+               center="user_mean"이면 사용자 평균 μ_u (adjusted cosine, Sarwar et al. 2001)
+        sim(i, j) = 잔차 (r - b) 벡터의 코사인 유사도 x n_ij / (n_ij + shrink)
+                    (n_ij: 함께 평가한 사용자 수. 적을수록 유사도를 줄임)
         호텔마다 유사도 상위 k개(양수)만 이웃으로 보관한다.
-        r̂(u, h) = μ_u + Σ_{j∈N(h)∩I_u} sim(h,j)(r_uj - μ_u) / Σ_{j∈N(h)∩I_u} sim(h,j)
-        이웃 중 사용자가 평가한 호텔이 없으면 r̂ = μ_u
+        r̂(u, h) = b_uh + Σ_{j∈N(h)∩I_u} sim(h,j)(r_uj - b_uj) / (Σ_{j∈N(h)∩I_u} sim(h,j) + damp)
+            damp: 사용자가 평가한 이웃이 1~2개뿐일 때 그 잔차를 그대로 믿지 않도록 분모를 키움
+            이웃 중 사용자가 평가한 호텔이 없으면 r̂ = b_uh
+
+    Top-N 점수 (rank_score)
+        평점 예측은 후보 대부분이 이웃과 겹치지 않아 b_uh로 동점이 되므로 순위용 점수를 따로 둔다.
+        score(u, h) = Σ_{j∈I_u} cos_co(h, j)   (사용자가 방문한 호텔들과의 공동 방문 유사도 합)
+            cos_co(i, j) = n_ij / sqrt(n_i · n_j)   호텔마다 상위 k개만 보관
+        동점은 b_uh로 정한다 (1e-3 배를 더함).
+        참고: Deshpande & Karypis (2004) Item-based top-N recommendation algorithms. ACM TOIS.
     """
 
-    def __init__(self, k=50, shrink=10.0, block=500, user_batch=500):
-        self.k, self.shrink, self.block, self.user_batch = k, shrink, block, user_batch
+    def __init__(self, k=2000, shrink=100.0, damp=0.03, center="baseline", block=500, user_batch=500):
+        self.k, self.shrink, self.damp, self.center = k, shrink, damp, center
+        self.block, self.user_batch = block, user_batch
+
+    def _base(self, u, i):
+        if self.center == "baseline":
+            return self.base.mu + self.base.bu[u] + self.base.bi[i]
+        return self.mu_u[u]
 
     def fit(self, u, i, r, n_users, n_items):
         t0 = time.time()
-        cnt = np.bincount(u, minlength=n_users)
-        self.mu_u = np.bincount(u, r, n_users) / np.maximum(cnt, 1)
-        res = (r - self.mu_u[u]).astype(np.float32)
+        if self.center == "baseline":
+            self.base = BiasBaseline().fit(u, i, r, n_users, n_items)
+        else:
+            cnt = np.bincount(u, minlength=n_users)
+            self.mu_u = np.bincount(u, r, n_users) / np.maximum(cnt, 1)
+        res = (r - self._base(u, i)).astype(np.float32)
         # scipy.sparse.csr_matrix((값, (행, 열)), shape): 0이 대부분인 행렬을 0이 아닌 값만 저장 (CSR 형식)
         self.X = sp.csr_matrix((res, (u, i)), shape=(n_users, n_items), dtype=np.float32)
         self.B = sp.csr_matrix((np.ones_like(res), (u, i)), shape=(n_users, n_items), dtype=np.float32)
         Xt, Bt = self.X.T.tocsr(), self.B.T.tocsr()
         norm = np.sqrt(np.asarray(self.X.multiply(self.X).sum(0)).ravel())
+        n_item = np.asarray(self.B.sum(0)).ravel()                  # 호텔별 평가 수 n_i
 
-        rows, cols, vals = [], [], []
+        S_parts, C_parts = [], []
         kk = min(self.k, n_items - 1)
         # 호텔 x 호텔 유사도 전체(약 4.7만 x 4.7만)는 메모리에 다 올릴 수 없으므로 block개 행씩 계산
         for a in range(0, n_items, self.block):
             b = min(a + self.block, n_items)
-            num = (Xt[a:b] @ self.X).toarray()                  # 분자: Σ_u x_ui x_uj
-            co = (Bt[a:b] @ self.B).toarray()                   # 함께 평가한 사용자 수 n_ij
+            diag = (np.arange(b - a), np.arange(a, b))
+            num = (Xt[a:b] @ self.X).toarray()                      # 분자: Σ_u x_ui x_uj
+            co = (Bt[a:b] @ self.B).toarray()                       # 함께 평가한 사용자 수 n_ij
             sim = num / (norm[a:b, None] * norm[None, :] + 1e-8) * (co / (co + self.shrink))
-            sim[np.arange(b - a), np.arange(a, b)] = 0          # 자기 자신 제외
-            # np.argpartition: 전체 정렬 없이 상위 kk개의 위치만 찾음 (순서는 보장하지 않음)
-            top = np.argpartition(-sim, kk, axis=1)[:, :kk]
-            v = np.take_along_axis(sim, top, axis=1)
-            keep = v > 0
-            rows.append(np.repeat(np.arange(a, b), kk)[keep.ravel()])
-            cols.append(top[keep])
-            vals.append(v[keep])
-        S = sp.csr_matrix((np.concatenate(vals), (np.concatenate(rows), np.concatenate(cols))),
-                          shape=(n_items, n_items), dtype=np.float32)
-        self.ST = S.T.tocsr()
-        print(f"   ItemKNN 유사도 계산 {time.time() - t0:.0f}초, 이웃 수 평균 {S.nnz / n_items:.1f}")
+            sim[diag] = 0                                           # 자기 자신 제외
+            S_parts.append(_top_k_rows(sim, a, kk))
+            cos_co = co / (np.sqrt(n_item[a:b, None] * n_item[None, :]) + 1e-8)
+            cos_co[diag] = 0
+            C_parts.append(_top_k_rows(cos_co, a, kk))
+
+        def to_csr(parts):
+            rows, cols, vals = (np.concatenate(x) for x in zip(*parts))
+            return sp.csr_matrix((vals, (rows, cols)), shape=(n_items, n_items), dtype=np.float32)
+
+        S, C = to_csr(S_parts), to_csr(C_parts)
+        self.ST, self.CT = S.T.tocsr(), C.T.tocsr()
+        print(f"   ItemKNN({self.center}) 유사도 계산 {time.time() - t0:.0f}초, 이웃 수 평균 {S.nnz / n_items:.1f}")
         return self
 
     def predict(self, u, i):
@@ -143,8 +177,15 @@ class ItemKNN:
             num = (self.X[users] @ self.ST).toarray()
             den = (self.B[users] @ self.ST).toarray()
             n, d = num[local, i[sel]], den[local, i[sel]]
-            out[sel] = self.mu_u[users][local] + np.where(d > 0, n / np.maximum(d, 1e-8), 0)
-        return np.clip(out, 1, 5)
+            # np.divide(..., where=조건): 조건이 참인 칸만 나누고 나머지는 out 초기값(0) 유지 (0으로 나누기 방지)
+            out[sel] = np.divide(n, d + self.damp, out=np.zeros_like(n, dtype=float), where=d > 0)
+        return np.clip(self._base(u, i) + out, 1, 5)
+
+    def rank_score(self, u, i):
+        out = np.empty(len(u))
+        for users, sel, local in user_batches(u, self.user_batch):
+            out[sel] = (self.B[users] @ self.CT).toarray()[local, i[sel]]
+        return out + 1e-3 * self._base(u, i)
 
 
 class BiasedMF:
