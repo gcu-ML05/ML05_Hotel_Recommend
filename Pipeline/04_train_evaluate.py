@@ -12,6 +12,11 @@
      모델 간 비교에 의미가 있다.)
 (3) 사용자 활동량(train 리뷰 수)별 HR@10: 리뷰가 적은 사용자에서 콘텐츠 기반/하이브리드가 도움이 되는지
     (제안서 1절의 동기)
+(4) 같은 도시 후보 Top-N: 후보를 정답 호텔과 같은 도시의 호텔로만 뽑아 "여행지 안에서 호텔 고르기"를 평가
+    (무작위 후보는 인기 호텔과 다른 지역의 비인기 호텔을 구별하기만 하면 되어 인기도 기준선이 지나치게 유리함)
+    hotel_map.csv가 리뷰 데이터와 같은 ID 체계일 때만 실행한다.
+
+Item-kNN은 개선판(KNNBaseline + 분모 축소 + 공동 방문 순위 점수)과 기존판(adjusted cosine)을 함께 보고한다.
 
 하이브리드 (제안서 ④):  score = λ · MF + (1 - λ) · ContentBased,  λ는 val NDCG@10이 가장 높은 값
 
@@ -24,8 +29,8 @@ import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 
-from common import (SEED, WORK_DIR, ensure_dirs, load_split, mae, ranking_metrics, rmse,
-                    sample_candidates, save_fig, save_table, setup_plot)
+from common import (HOTELREC_DIR, SEED, WORK_DIR, ensure_dirs, load_split, mae, ranking_metrics, rmse,
+                    sample_candidates, sample_city_candidates, save_fig, save_table, setup_plot)
 from models import BiasBaseline, BiasedMF, ContentBased, ItemKNN, PersonaPopularity, Popularity
 
 LAMBDAS = np.round(np.arange(0, 1.01, 0.1), 1)
@@ -41,7 +46,10 @@ def main():
     ap.add_argument("--n-test-users", type=int, default=20_000, help="Top-N 평가에 쓰는 test 사용자 수")
     ap.add_argument("--n-val-users", type=int, default=5_000, help="λ 선택에 쓰는 val 사용자 수")
     ap.add_argument("--n-neg", type=int, default=99, help="정답 1개와 함께 섞는 후보 호텔 수")
-    ap.add_argument("--knn-k", type=int, default=50)
+    ap.add_argument("--n-city-neg", type=int, default=49, help="같은 도시 평가에서 정답과 섞는 후보 호텔 수")
+    ap.add_argument("--knn-k", type=int, default=2000, help="호텔별 이웃 수 (04a_tune_itemknn.py로 선택)")
+    ap.add_argument("--knn-shrink", type=float, default=100.0)
+    ap.add_argument("--knn-damp", type=float, default=0.03)
     ap.add_argument("--mf-k", type=int, default=32)
     ap.add_argument("--mf-lr", type=float, default=0.01)
     ap.add_argument("--mf-reg", type=float, default=0.05)
@@ -74,7 +82,11 @@ def main():
     base = timed("Baseline", lambda: BiasBaseline().fit(u, i, r, n_users, n_hotels))
     pop = timed("Popularity", lambda: Popularity().fit(u, i, r, n_users, n_hotels))
     ppop = timed("PersonaPopularity", lambda: PersonaPopularity(persona).fit(u, i, r, n_users, n_hotels))
-    knn = timed("ItemKNN", lambda: ItemKNN(k=args.knn_k).fit(u, i, r, n_users, n_hotels))
+    knn = timed("ItemKNN", lambda: ItemKNN(k=args.knn_k, shrink=args.knn_shrink, damp=args.knn_damp)
+                .fit(u, i, r, n_users, n_hotels))
+    # 비교용 기존판: 사용자 평균 기준(adjusted cosine), 축소 약하게, 분모 축소 없음
+    knn_old = timed("ItemKNN(기존)", lambda: ItemKNN(k=50, shrink=10, damp=0, center="user_mean")
+                    .fit(u, i, r, n_users, n_hotels))
     mf = timed("MF", lambda: BiasedMF(k=args.mf_k, lr=args.mf_lr, reg=args.mf_reg, epochs=args.mf_epochs)
                .fit(u, i, r, n_users, n_hotels, val=val))
     cb = timed("Content", lambda: ContentBased(W, A, T).fit(u, i, r, n_users, n_hotels).fit_gamma(*val))
@@ -96,6 +108,7 @@ def main():
     rating_models = {
         "GlobalMean": lambda a, b: np.full(len(a), r.mean()),
         "Baseline(μ+b_u+b_i)": base.predict,
+        "ItemKNN(기존)": knn_old.predict,
         "ItemKNN": knn.predict,
         "MF": mf.predict,
         "Content(aspect, 전역 w)": lambda a, b: np.clip(cb_g.utility(a, b), 1, 5),
@@ -104,6 +117,7 @@ def main():
     }
     rank_models = {"Popularity": pop.predict, "PersonaPopularity": ppop.predict, **{
         k: v for k, v in rating_models.items() if k != "GlobalMean"}}
+    rank_models["ItemKNN"] = knn.rank_score          # 개선판은 순위용 점수(공동 방문 유사도 합)를 따로 씀
 
     # ------------------------------------------------------------ 후보 생성
     print("[2/4] Top-N 평가 후보 생성")
@@ -148,6 +162,10 @@ def main():
     rating_models[f"Hybrid(λ={lam})"] = hybrid
     rank_models[f"Hybrid(λ={lam})"] = hybrid
 
+    # 06단계(Kaggle 호텔 매칭)가 쓰는 호텔 단위 점수: 신규 사용자 예측은 사용자 항이 0
+    np.savez(WORK_DIR / "hotel_scores.npz", base_mu=base.mu, base_bi=base.bi, mf_mu=mf.mu, mf_bi=mf.bi,
+             hybrid_lambda=lam)
+
     # ------------------------------------------------------------ test 평가
     print("[4/4] test 평가")
     rows = []
@@ -155,7 +173,7 @@ def main():
         pv, pt = f(val[0], val[1]), f(test[0], test[1])
         rows.append({"model": name, "val_RMSE": rmse(val[2], pv), "val_MAE": mae(val[2], pv),
                      "test_RMSE": rmse(test[2], pt), "test_MAE": mae(test[2], pt),
-                     "train_time_s": times.get(name.split("(")[0], "")})
+                     "train_time_s": times.get(name, times.get(name.split("(")[0], ""))})
     rating_tab = pd.DataFrame(rows)
     print(rating_tab.round(4).to_string(index=False))
     save_table(rating_tab, "04_rating_prediction")
@@ -188,6 +206,32 @@ def main():
     ax[1].set_xlabel("train 리뷰 수 구간")
     ax[1].legend(fontsize=7, ncol=2)
     save_fig(plt, "04_topn_results")
+
+    # ------------------------------------------------------------ 같은 도시 후보 Top-N
+    hm = pd.read_csv(HOTELREC_DIR / "hotel_map.csv", encoding="utf-8-sig").sort_values("hotel_id")
+    if len(hm) != n_hotels or not (hm.hotel_id.to_numpy() == np.arange(n_hotels)).all():
+        print(f"[건너뜀] hotel_map.csv({len(hm):,}행)가 리뷰 데이터의 호텔 수({n_hotels:,}개)와 맞지 않아 "
+              "같은 도시 평가를 하지 않습니다")
+        return
+    city = hm.location.fillna("(unknown)").to_numpy()
+    pos = te.set_index("user_id").loc[test_users, "hotel_id"].to_numpy()
+    c_users, c_cand = sample_city_candidates(df, test_users, pos, city, args.n_city_neg, rng)
+    print(f"같은 도시 Top-N: test 사용자 {len(test_users):,}명 중 같은 도시 후보가 {args.n_city_neg}개 이상인 "
+          f"{len(c_users):,}명 (후보 1+{args.n_city_neg})")
+    rows = []
+    for name, f in rank_models.items():
+        met, _ = ranking_metrics(scores(f, c_users, c_cand))
+        rows.append({"model": name, **met})
+    city_tab = pd.DataFrame(rows)
+    print(city_tab.round(4).to_string(index=False))
+    save_table(city_tab, "04_topn_same_city")
+
+    both = rank_tab[["model", "NDCG@10"]].merge(city_tab[["model", "NDCG@10"]], on="model",
+                                                 suffixes=(" (무작위 후보)", " (같은 도시 후보)"))
+    ax = both.set_index("model").plot.barh(figsize=(8, 5))
+    ax.invert_yaxis()
+    ax.set_title("test NDCG@10: 후보 구성에 따른 비교")
+    save_fig(plt, "04_topn_same_city")
 
 
 if __name__ == "__main__":

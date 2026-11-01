@@ -1,0 +1,506 @@
+﻿kaggle_hotel_id,hotel_name_kaggle,city,hotelrec_hotel_id,hotel_name_hotelrec,location,match,ratio
+930,Amadi Park Hotel,Amsterdam,36369,Amadi Park Hotel,Amsterdam North Holland Province,exact,1.0
+1305,Amsterdam Marriott Hotel,Amsterdam,46523,Amsterdam Marriott Hotel,Amsterdam North Holland Province,exact,1.0
+802,Best Western Delphi Hotel,Amsterdam,28686,Best Western Delphi Hotel,Amsterdam North Holland Province,exact,1.0
+918,Bilderberg Garden Hotel,Amsterdam,6456,Bilderberg Garden Hotel,Amsterdam North Holland Province,exact,1.0
+1013,Bilderberg Hotel Jan Luyken,Amsterdam,7133,Bilderberg Hotel Jan Luyken,Amsterdam North Holland Province,exact,1.0
+1036,Canal House,Amsterdam,27958,Canal House,Amsterdam North Holland Province,exact,1.0
+1125,DoubleTree by Hilton Amsterdam Centraal Station,Amsterdam,30920,DoubleTree by Hilton Hotel Amsterdam Centraal Station,Amsterdam North Holland Province,exact,1.0
+1204,Grand Hotel Amr th Amsterdam,Amsterdam,11500,Grand Hotel Amrath Amsterdam,Amsterdam North Holland Province,fuzzy,0.9545454545454546
+929,Grand Hotel Downtown,Amsterdam,37636,Grand Hotel Downtown,Amsterdam North Holland Province,exact,1.0
+1135,Hampton by Hilton Amsterdam Centre East,Amsterdam,45632,Hampton by Hilton Amsterdam Centre East,Amsterdam North Holland Province,exact,1.0
+804,Hilton Amsterdam,Amsterdam,675,Hilton Amsterdam,Amsterdam North Holland Province,exact,1.0
+912,Holiday Inn Amsterdam,Amsterdam,10164,Holiday Inn Amsterdam,Amsterdam North Holland Province,exact,1.0
+1006,Holiday Inn Amsterdam Arena Towers,Amsterdam,41911,Holiday Inn Amsterdam Arena Towers,Amsterdam North Holland Province,exact,1.0
+0,Hotel Arena,Amsterdam,46069,Hotel Arena,Amsterdam North Holland Province,exact,1.0
+1114,Hotel Die Port van Cleve,Amsterdam,17,Die Port van Cleve,Amsterdam North Holland Province,exact,1.0
+1012,Hotel JL No76,Amsterdam,28713,Hotel JL No76,Amsterdam North Holland Province,exact,1.0
+1210,Hotel Seven One Seven,Amsterdam,2042,Hotel Seven one Seven,Amsterdam North Holland Province,exact,1.0
+1269,Hyatt Regency Amsterdam,Amsterdam,46404,Hyatt Regency Amsterdam,Amsterdam North Holland Province,exact,1.0
+1116,Inntel Hotels Amsterdam Centre,Amsterdam,1966,Inntel Hotels Amsterdam Centre,Amsterdam North Holland Province,exact,1.0
+1129,Luxury Suites Amsterdam,Amsterdam,45007,Luxury Suites Amsterdam,Amsterdam North Holland Province,exact,1.0
+1105,Mercure Amsterdam Sloterdijk Station,Amsterdam,44656,Mercure Amsterdam Sloterdijk Station,Amsterdam North Holland Province,exact,1.0
+1118,Mercure Hotel Amsterdam Centre Canal District,Amsterdam,45096,Mercure Amsterdam Centre Canal District,Amsterdam North Holland Province,exact,1.0
+1228,NH Amsterdam Caransa,Amsterdam,11374,NH Amsterdam Caransa,Amsterdam North Holland Province,exact,1.0
+1307,NH Amsterdam Centre,Amsterdam,2152,NH Amsterdam Centre,Amsterdam North Holland Province,exact,1.0
+923,NH Amsterdam Noord,Amsterdam,36898,NH Amsterdam Noord,Amsterdam North Holland Province,exact,1.0
+1229,NH Amsterdam Schiller,Amsterdam,1483,NH Amsterdam Schiller,Amsterdam North Holland Province,exact,1.0
+938,Novotel Amsterdam City,Amsterdam,2148,Novotel Amsterdam City,Amsterdam North Holland Province,exact,1.0
+1034,Ozo Hotel,Amsterdam,43765,Ozo Hotel,Amsterdam North Holland Province,exact,1.0
+1207,Pulitzer Amsterdam,Amsterdam,45647,Pulitzer Amsterdam,Amsterdam North Holland Province,exact,1.0
+1262,Radisson Blu Hotel Amsterdam,Amsterdam,357,Radisson Blu Hotel Amsterdam,Amsterdam North Holland Province,exact,1.0
+1304,Ramada Apollo Amsterdam Centre,Amsterdam,36499,Ramada Apollo Amsterdam Centre,Amsterdam North Holland Province,exact,1.0
+1009,Room Mate Aitana,Amsterdam,40518,Room Mate Aitana,Amsterdam North Holland Province,exact,1.0
+1131,Sir Adam Hotel,Amsterdam,46067,Sir Adam Hotel,Amsterdam North Holland Province,exact,1.0
+1130,Sofitel Legend The Grand Amsterdam,Amsterdam,6278,Sofitel Legend The Grand Amsterdam,Amsterdam North Holland Province,exact,1.0
+910,Swiss tel Amsterdam,Amsterdam,45182,Swissotel Amsterdam,Amsterdam North Holland Province,fuzzy,0.9473684210526315
+1240,The College Hotel,Amsterdam,2024,The College Hotel,Amsterdam North Holland Province,exact,1.0
+1485,The Student Hotel Amsterdam City,Amsterdam,44364,The Student Hotel Amsterdam City,Amsterdam North Holland Province,exact,1.0
+1037,The Toren,Amsterdam,17376,The Toren,Amsterdam North Holland Province,exact,1.0
+810,Urban Lodge Hotel,Amsterdam,45028,Urban Lodge Hotel,Amsterdam North Holland Province,exact,1.0
+1300,W Amsterdam,Amsterdam,44701,W Amsterdam,Amsterdam North Holland Province,exact,1.0
+992,Waldorf Astoria Amsterdam,Amsterdam,42306,Waldorf Astoria Amsterdam,Amsterdam North Holland Province,exact,1.0
+988,WestCord Fashion Hotel Amsterdam,Amsterdam,24945,WestCord Fashion Hotel Amsterdam,Amsterdam North Holland Province,exact,1.0
+1205,art otel Amsterdam,Amsterdam,41254,Art otel Amsterdam,Amsterdam North Holland Province,exact,1.0
+1120,Abba Sants,Barcelona,24469,Abba Sants Hotel,Barcelona Catalonia,exact,1.0
+1464,Acevi Villarroel,Barcelona,8519,Acevi Villarroel,Barcelona Catalonia,exact,1.0
+965,Acta Atrium Palace,Barcelona,1423,Acta Atrium Palace,Barcelona Catalonia,exact,1.0
+1111,Acta CITY47,Barcelona,8365,Acta City47,Barcelona Catalonia,exact,1.0
+1213,Attica 21 Barcelona Mar,Barcelona,31857,Attica 21 Barcelona Mar,Barcelona Catalonia,exact,1.0
+964,Avenida Palace,Barcelona,7144,Hotel El Avenida Palace,Barcelona Catalonia,fuzzy,0.9032258064516129
+1221,Barcel Raval,Barcelona,16957,Barcelo Raval,Barcelona Catalonia,fuzzy,0.96
+815,Barcelona Princess,Barcelona,4804,Barcelona Princess,Barcelona Catalonia,exact,1.0
+826,Catalonia Atenas,Barcelona,15174,Catalonia Atenas Hotel,Barcelona Catalonia,exact,1.0
+1104,Catalonia Barcelona 505,Barcelona,12980,Hotel Catalonia Barcelona 505,Barcelona Catalonia,exact,1.0
+1198,Catalonia Barcelona Plaza,Barcelona,12473,Catalonia Barcelona Plaza,Barcelona Catalonia,exact,1.0
+1189,Duquesa Suites Barcelona,Barcelona,45889,Duquesa Suites Barcelona,Barcelona Catalonia,exact,1.0
+798,Eurostars Angli,Barcelona,10682,Eurostars Angli,Barcelona Catalonia,exact,1.0
+1151,Eurostars Bcn Design,Barcelona,16280,Eurostars BCN Design,Barcelona Catalonia,exact,1.0
+1100,Eurostars Grand Marina Hotel GL,Barcelona,412,Eurostars Grand Marina Hotel,Barcelona Catalonia,fuzzy,0.9361702127659575
+1256,Evenia Rossello,Barcelona,4760,Evenia Rosello,Barcelona Catalonia,fuzzy,0.9655172413793104
+823,Fairmont Rey Juan Carlos I,Barcelona,45339,Fairmont Rey Juan Carlos I,Barcelona Catalonia,exact,1.0
+1253,Gallery Hotel,Barcelona,11652,Gallery Hotel,Barcelona Catalonia,exact,1.0
+878,Gran Hotel La Florida,Barcelona,7256,Gran Hotel La Florida,Barcelona Catalonia,exact,1.0
+830,Gran Hotel Torre Catalunya,Barcelona,2425,Gran Hotel Torre Catalunya,Barcelona Catalonia,exact,1.0
+1370,Grand Hotel Central,Barcelona,41617,Grand Hotel Central,Barcelona Catalonia,exact,1.0
+969,Grupotel Gran Via 678,Barcelona,25442,Grupotel Gran Via 678,Barcelona Catalonia,exact,1.0
+963,H10 Casanova,Barcelona,8185,H10 Casanova,Barcelona Catalonia,exact,1.0
+814,H10 Marina Barcelona,Barcelona,999,H10 Marina Barcelona Hotel,Barcelona Catalonia,exact,1.0
+1220,HCC Regente,Barcelona,11297,Hotel HCC Regente,Barcelona Catalonia,exact,1.0
+921,HCC St Moritz,Barcelona,1534,HCC St Moritz,Barcelona Catalonia,exact,1.0
+1159,Hilton Diagonal Mar Barcelona,Barcelona,4936,Hilton Diagonal Mar Barcelona,Barcelona Catalonia,exact,1.0
+1046,Hotel 1898,Barcelona,5086,Hotel 1898,Barcelona Catalonia,exact,1.0
+1214,Hotel America Barcelona,Barcelona,45589,Hotel America Barcelona,Barcelona Catalonia,exact,1.0
+1096,Hotel Arts Barcelona,Barcelona,2074,Hotel Arts Barcelona,Barcelona Catalonia,exact,1.0
+1332,Hotel Balmoral,Barcelona,12671,Hotel Balmoral,Barcelona Catalonia,exact,1.0
+871,Hotel Barcelona Catedral,Barcelona,7871,Hotel Barcelona Catedral,Barcelona Catalonia,exact,1.0
+1073,Hotel Derby,Barcelona,16865,Hotel Derby,Barcelona Catalonia,exact,1.0
+1247,Hotel Garbi Millenni,Barcelona,37095,Hotel Garbi Millenni,Barcelona Catalonia,exact,1.0
+1074,Hotel Gran Derby Suites,Barcelona,27098,Hotel Gran Derby Suites,Barcelona Catalonia,exact,1.0
+1165,Hotel Midmost,Barcelona,45575,Hotel Midmost,Barcelona Catalonia,exact,1.0
+1196,Hotel Miramar Barcelona GL,Barcelona,27027,Hotel Miramar Barcelona,Barcelona Catalonia,fuzzy,0.918918918918919
+1217,Hotel Murmuri Barcelona,Barcelona,12483,Hotel Murmuri Barcelona,Barcelona Catalonia,exact,1.0
+837,Hotel SB Icaria Barcelona,Barcelona,9417,Hotel SB Icaria Barcelona,Barcelona Catalonia,exact,1.0
+1133,Hotel Spa Villa Olimpica Suites,Barcelona,24386,Hotel Spa Villa Olimpica Suites,Barcelona Catalonia,exact,1.0
+1462,Hotel Vilamar ,Barcelona,34292,Hotel Vilamari,Barcelona Catalonia,fuzzy,0.9333333333333333
+1242,Hotel mbit Barcelona,Barcelona,44675,Hotel Ambit Barcelona,Barcelona Catalonia,fuzzy,0.9655172413793104
+1371,Ilunion Almirante,Barcelona,18554,Hotel Ilunion Almirante,Barcelona Catalonia,exact,1.0
+1223,Ilunion Barcelona,Barcelona,18824,Ilunion Barcelona,Barcelona Catalonia,exact,1.0
+1157,K K Hotel Picasso,Barcelona,35829,K K Hotel Picasso,Barcelona Catalonia,exact,1.0
+1222,Le M ridien Barcelona,Barcelona,2875,Le Meridien Barcelona,Barcelona Catalonia,fuzzy,0.9523809523809523
+1155,Majestic Hotel Spa Barcelona GL,Barcelona,37071,Majestic Hotel Spa Barcelona,Barcelona Catalonia,fuzzy,0.9230769230769231
+1152,Mandarin Oriental Barcelona,Barcelona,23272,Mandarin Oriental Barcelona,Barcelona Catalonia,exact,1.0
+928,Medinaceli,Barcelona,8394,Hotel Medinaceli,Barcelona Catalonia,exact,1.0
+834,Melia Barcelona Sarri ,Barcelona,11043,Melia Barcelona Sarria,Barcelona Catalonia,fuzzy,0.9767441860465116
+1320,NH Barcelona Stadium,Barcelona,36238,NH Barcelona Stadium,Barcelona Catalonia,exact,1.0
+1218,NH Collection Barcelona Gran Hotel Calder n,Barcelona,45883,NH Collection Barcelona Gran Hotel Calderon,Barcelona Catalonia,fuzzy,0.972972972972973
+840,NH Collection Barcelona Podium,Barcelona,45209,NH Collection Barcelona Podium,Barcelona Catalonia,exact,1.0
+937,NH Hesperia Barcelona del Mar,Barcelona,1745,Hesperia Barcelona Del Mar,Barcelona Catalonia,fuzzy,0.9454545454545454
+816,Novotel Barcelona City,Barcelona,23838,Novotel Barcelona City,Barcelona Catalonia,exact,1.0
+1146,Occidental Atenea Mar Adults Only,Barcelona,17577,Occidental Atenea Mar Adults only,Barcelona Catalonia,exact,1.0
+1372,Ohla Barcelona,Barcelona,29496,Hotel Ohla Barcelona,Barcelona Catalonia,exact,1.0
+865,Ohla Eixample,Barcelona,45249,Ohla Eixample,Barcelona Catalonia,exact,1.0
+843,Olivia Balmes Hotel,Barcelona,40275,Olivia Balmes Hotel,Barcelona Catalonia,exact,1.0
+1197,Olivia Plaza Hotel,Barcelona,8189,Olivia Plaza Hotel,Barcelona Catalonia,exact,1.0
+1119,Onix Liceo,Barcelona,18834,Onix Liceo Hotel,Barcelona Catalonia,exact,1.0
+976,Pol Grace Hotel,Barcelona,4586,Pol Grace Hotel,Barcelona Catalonia,exact,1.0
+924,Primero Primera,Barcelona,34586,Hotel Primero Primera,Barcelona Catalonia,exact,1.0
+824,Pullman Barcelona Skipper,Barcelona,8636,Pullman Barcelona Skipper,Barcelona Catalonia,exact,1.0
+1246,Roger de Ll ria,Barcelona,20467,Hotel Roger De Lluria,Barcelona Catalonia,fuzzy,0.9166666666666666
+877,Room Mate Anna,Barcelona,45639,Room Mate Anna,Barcelona Catalonia,exact,1.0
+1083,Room Mate Carla,Barcelona,46009,Room Mate Carla,Barcelona Catalonia,exact,1.0
+1156,Royal Passeig de Gracia,Barcelona,39716,Hotel Royal Passeig de Gracia,Barcelona Catalonia,exact,1.0
+336,Sansi Diputacio,Barcelona,1890,Sansi Diputacio Hotel,Barcelona Catalonia,exact,1.0
+1154,Sixtytwo Hotel,Barcelona,21234,Sixtytwo Hotel,Barcelona Catalonia,exact,1.0
+959,Sunotel Central,Barcelona,14808,Sunotel Central,Barcelona Catalonia,exact,1.0
+1078,The Corner Hotel,Barcelona,45870,The Corner Hotel,Barcelona Catalonia,exact,1.0
+1071,The Level at Melia Barcelona Sky,Barcelona,42457,The Level at Melia Barcelona Sky,Barcelona Catalonia,exact,1.0
+890,The Mirror Barcelona,Barcelona,36710,The Mirror Barcelona,Barcelona Catalonia,exact,1.0
+827,Tryp Barcelona Apolo Hotel,Barcelona,193,Tryp Barcelona Apolo Hotel,Barcelona Catalonia,exact,1.0
+885,U232 Hotel,Barcelona,8998,U232 Hotel,Barcelona Catalonia,exact,1.0
+1248,Vincci Gala,Barcelona,42073,Vincci Gala,Barcelona Catalonia,exact,1.0
+1268,Zenit Barcelona,Barcelona,17572,Hotel Denit Barcelona,Barcelona Catalonia,fuzzy,0.9333333333333333
+77,11 Cadogan Gardens,London,18818,11 Cadogan Gardens,London England,exact,1.0
+532,41,London,3699,Hotel 41,London England,exact,1.0
+861,Amba Hotel Marble Arch,London,44653,Amba Hotel Marble Arch,London England,exact,1.0
+111,Ambassadors Bloomsbury,London,11635,Ambassadors Bloomsbury,London England,exact,1.0
+518,Andaz London Liverpool Street,London,15563,Andaz London Liverpool Street,London England,exact,1.0
+2,Apex Temple Court Hotel,London,34270,Apex Temple Court Hotel,London England,exact,1.0
+102,Arbor City,London,44569,Arbor City Hotel,London England,exact,1.0
+100,Batty Langley s,London,44510,Batty Langley s,London England,exact,1.0
+361,Bentley London,London,18776,The Bentley London,London England,exact,1.0
+662,Best Western Palm Hotel,London,17345,Best Western Palm Hotel,London England,exact,1.0
+222,Best Western The Boltons Hotel London Kensington,London,16635,Best Western The Boltons London Kensington,London England,exact,1.0
+441,Blakes Hotel,London,32066,Blakes Hotel,London England,exact,1.0
+374,Bloomsbury Palace Hotel,London,34928,Bloomsbury Palace Hotel,London England,exact,1.0
+203,Bulgari Hotel London,London,37088,Bulgari Hotel London,London England,exact,1.0
+558,Canary Riverside Plaza Hotel,London,10048,Canary Riverside Plaza Hotel,London England,exact,1.0
+151,Charlotte Street Hotel,London,1521,Charlotte Street Hotel,London England,exact,1.0
+659,Clayton Hotel Chiswick,London,43824,Clayton Hotel Chiswick,London England,exact,1.0
+687,Club Quarters Hotel Gracechurch,London,1712,Club Quarters Hotel Gracechurch,London England,exact,1.0
+340,Club Quarters Hotel St Paul s,London,5371,Club Quarters Hotel St Paul s,London England,exact,1.0
+724,Club Quarters Hotel Trafalgar Square,London,19346,Club Quarters Hotel Trafalgar Square,London England,exact,1.0
+421,Comfort Inn Suites Kings Cross St Pancras,London,17021,Comfort Inn and Suites King s Cross St Pancras,London England,fuzzy,0.9855072463768116
+310,Conrad London St James,London,37635,Conrad London St James,London England,exact,1.0
+1484,Corinthia Hotel London,London,30915,Corinthia Hotel London,London England,exact,1.0
+447,Courthouse Hotel Shoreditch,London,45642,Courthouse Hotel Shoreditch,London England,exact,1.0
+57,Crowne Plaza London Kensington,London,18552,Crowne Plaza London Kensington,London England,exact,1.0
+15,Crowne Plaza London Kings Cross,London,796,Crowne Plaza London Kings Cross,London England,exact,1.0
+212,Danubius Hotel Regents Park,London,46002,Danubius Hotel Regents Park,London England,exact,1.0
+492,Dorset Square Hotel,London,40048,Dorset Square Hotel,London England,exact,1.0
+940,DoubleTree By Hilton London Excel,London,45024,DoubleTree by Hilton Hotel London ExCeL,London England,exact,1.0
+501,DoubleTree by Hilton Hotel London Marble Arch,London,29109,DoubleTree by Hilton Hotel London Marble Arch,London England,exact,1.0
+689,DoubleTree by Hilton Hotel London Tower of London,London,26184,DoubleTree by Hilton Hotel London Tower of London,London England,exact,1.0
+651,DoubleTree by Hilton London Islington,London,42689,Doubletree by Hilton London Islington,London England,exact,1.0
+248,DoubleTree by Hilton London Victoria,London,41432,DoubleTree by Hilton Hotel London Victoria,London England,exact,1.0
+776,DoubleTree by Hilton London West End,London,27242,DoubleTree by Hilton Hotel London West End,London England,exact,1.0
+58,Doubletree by Hilton London Kensington,London,44859,DoubleTree by Hilton Hotel London Kensington,London England,exact,1.0
+359,Draycott Hotel,London,3556,Draycott Hotel,London England,exact,1.0
+469,Dukes Hotel,London,12858,Dukes Hotel,London England,exact,1.0
+954,Durrants Hotel,London,8732,Durrants Hotel,London England,exact,1.0
+483,Eccleston Square Hotel,London,42058,Eccleston Square Hotel,London England,exact,1.0
+500,Fielding Hotel,London,31957,The Fielding Hotel,London England,exact,1.0
+679,Gainsborough Hotel,London,15528,The Gainsborough Hotel,London England,exact,1.0
+13,Grand Royale London Hyde Park,London,28081,Grand Royale London Hyde Park,London England,exact,1.0
+338,Grange Beauchamp Hotel,London,16318,Grange Beauchamp Hotel,London England,exact,1.0
+688,Grange Blooms Hotel,London,3676,Grange Blooms Hotel,London England,exact,1.0
+449,Grange Clarendon Hotel,London,4671,Grange Clarendon Hotel,London England,exact,1.0
+678,Grange Rochester Hotel,London,7501,Grange Rochester Hotel,London England,exact,1.0
+534,Grange Strathmore Hotel,London,5263,Grange Strathmore Hotel,London England,exact,1.0
+705,Grange Wellington Hotel,London,42247,Grange Wellington Hotel,London England,exact,1.0
+243,Grange White Hall Hotel,London,2179,Grange White Hall Hotel,London England,exact,1.0
+748,Grosvenor House Suites by Jumeirah Living,London,35940,Grosvenor House Suites by Jumeirah Living,London England,exact,1.0
+372,H10 London Waterloo,London,21735,H10 London Waterloo,London England,exact,1.0
+24,Haymarket Hotel,London,16311,Haymarket Hotel,London England,exact,1.0
+631,Hazlitt s,London,9515,Hazlitt s,London England,exact,1.0
+410,Henley House Hotel,London,6268,Henley House Hotel,London England,exact,1.0
+244,Hilton London Bankside,London,44658,Hilton London Bankside,London England,exact,1.0
+1297,Hilton London Canary Wharf,London,5919,Hilton London Canary Wharf,London England,exact,1.0
+981,Hilton London Green Park,London,846,Hilton London Green Park,London England,exact,1.0
+117,Hilton London Hyde Park,London,45554,Hilton London Hyde Park,London England,exact,1.0
+1003,Hilton London Kensington Hotel,London,55,Hilton London Kensington,London England,exact,1.0
+324,Hilton London Metropole,London,40525,Hilton London Metropole,London England,exact,1.0
+148,Hilton London Paddington,London,32,Hilton London Paddington,London England,exact,1.0
+575,Hilton London Tower Bridge,London,6855,Hilton London Tower Bridge,London England,exact,1.0
+889,Holiday Inn London Bloomsbury,London,7364,Holiday Inn London Bloomsbury,London England,exact,1.0
+780,Holiday Inn London Kensington Forum,London,3011,Holiday Inn London Kensington Forum,London England,exact,1.0
+385,Holiday Inn London Mayfair,London,1076,Holiday Inn London Mayfair,London England,exact,1.0
+873,Holiday Inn London Regent s Park,London,9669,Holiday Inn London Regent s Park,London England,exact,1.0
+70,Holiday Inn London Stratford City,London,35008,Holiday Inn London Stratford City,London England,exact,1.0
+502,Holiday Inn London West,London,42833,Holiday Inn London West,London England,exact,1.0
+572,Holiday Inn London Whitechapel,London,36252,Holiday Inn London Whitechapel,London England,exact,1.0
+985,Hotel 55,London,9319,Hotel 55,London England,exact,1.0
+179,Hotel Indigo London Paddington,London,16044,Hotel Indigo London Paddington,London England,exact,1.0
+759,Hotel Moonlight,London,45849,Hotel Moonlight,London England,exact,1.0
+414,Hyatt Regency London The Churchill,London,11199,Hyatt Regency London The Churchill,London England,exact,1.0
+381,Innkeeper s Lodge London Greenwich,London,27775,Innkeeper s Lodge London Greenwich,London England,exact,1.0
+11,InterContinental London Park Lane,London,51,InterContinental London Park Lane,London England,exact,1.0
+866,Jumeirah Carlton Tower,London,7502,Jumeirah Carlton Tower,London England,exact,1.0
+1075,Jumeirah Lowndes Hotel,London,1614,Jumeirah Lowndes Hotel,London England,exact,1.0
+1,K K Hotel George,London,635,K K Hotel George,London England,exact,1.0
+1235,K West Hotel Spa,London,728,K West Hotel Spa,London England,exact,1.0
+150,Kensington House Hotel,London,332,Kensington House Hotel,London England,exact,1.0
+671,Kingsway Hall Hotel,London,1276,Kingsway Hall Hotel,London England,exact,1.0
+31,Knightsbridge Hotel,London,1036,Knightsbridge Hotel,London England,exact,1.0
+527,La Suite West Hyde Park,London,37330,La Suite West Hyde Park,London England,exact,1.0
+323,Landmark London,London,1846,The Landmark London,London England,exact,1.0
+718,London Bridge Hotel,London,2658,London Bridge Hotel,London England,exact,1.0
+1051,London Elizabeth Hotel,London,485,London Elizabeth Hotel,London England,exact,1.0
+314,London Hilton on Park Lane,London,35004,London Hilton on Park Lane,London England,exact,1.0
+974,London Marriott Hotel Grosvenor Square,London,3700,London Marriott Hotel Grosvenor Square,London England,exact,1.0
+169,M by Montcalm Shoreditch London Tech City,London,43543,M by Montcalm Shoreditch London Tech City,London England,exact,1.0
+89,Marlin Waterloo,London,46348,Marlin Waterloo,London England,exact,1.0
+847,Megaro Hotel,London,14321,The Megaro Hotel,London England,exact,1.0
+703,Mercure London Bridge,London,13428,Mercure London Bridge,London England,exact,1.0
+717,Mercure London Hyde Park,London,45885,Mercure London Hyde Park Hotel,London England,exact,1.0
+951,Millennium Copthorne Hotels at Chelsea Football Club,London,1006,Millennium Copthorne Hotels at Chelsea Football Club,London England,exact,1.0
+621,Mimi s Hotel Soho,London,45992,Mimis Hotel Soho,London England,fuzzy,0.9523809523809523
+250,Montagu Place Hotel,London,8533,Montagu Place Hotel,London England,exact,1.0
+463,My Chelsea,London,1355,My Chelsea,London England,exact,1.0
+625,New Linden Hotel,London,3491,New Linden Hotel,London England,exact,1.0
+556,Novotel London Blackfriars,London,37400,Novotel London Blackfriars,London England,exact,1.0
+701,Novotel London Excel,London,11806,Novotel London Excel,London England,exact,1.0
+390,Novotel London Paddington,London,16368,Novotel London Paddington,London England,exact,1.0
+40,Novotel London Tower Bridge,London,2865,Novotel London Tower Bridge,London England,exact,1.0
+23,Novotel London West,London,1419,Novotel London West,London England,exact,1.0
+183,Number Sixteen,London,3257,Number Sixteen,London England,exact,1.0
+205,Park Avenue Baker Street,London,39417,Park Avenue Baker Street,London England,exact,1.0
+708,Park Grand London Hyde Park,London,33381,Park Grand London Hyde Park,London England,exact,1.0
+433,Park Grand London Kensington,London,39706,Park Grand London Kensington,London England,exact,1.0
+132,Park Grand London Lancaster Gate,London,42879,Park Grand London Lancaster Gate,London England,exact,1.0
+93,Park International Hotel,London,280,Park International Hotel,London England,exact,1.0
+267,Park Lane Mews Hotel,London,6122,Park Lane Mews Hotel,London England,exact,1.0
+7,Park Plaza County Hall London,London,12316,Park Plaza County Hall London,London England,exact,1.0
+660,Park Plaza London Park Royal,London,46347,Park Plaza London Park Royal,London England,exact,1.0
+210,Park Plaza London Riverbank,London,2864,Park Plaza London Riverbank,London England,exact,1.0
+67,Park Plaza Sherlock Holmes London,London,7662,Park Plaza Sherlock Holmes London,London England,exact,1.0
+337,Park Plaza Victoria London,London,1348,Park Plaza Victoria London,London England,exact,1.0
+56,Pullman London St Pancras,London,36712,Pullman London St Pancras Hotel,London England,exact,1.0
+757,Radisson Blu Edwardian Bloomsbury Street,London,16952,Radisson Blu Edwardian London Bloomsbury Street,London England,fuzzy,0.9195402298850575
+128,Radisson Blu Edwardian Grafton,London,4338,Radisson Blu Edwardian Grafton Hotel,London England,exact,1.0
+781,Radisson Blu Edwardian Kenilworth,London,8495,Radisson Blu Edwardian Kenilworth Hotel,London England,exact,1.0
+277,Radisson Blu Edwardian Mercer Street,London,30270,Radisson Blu Edwardian Mercer Street Hotel,London England,exact,1.0
+574,Radisson Blu Edwardian New Providence Wharf,London,11211,Radisson Blu Edwardian New Providence Wharf Hotel,London England,exact,1.0
+223,Radisson Blu Edwardian Sussex,London,14046,Radisson Blu Edwardian Sussex Hotel,London England,exact,1.0
+674,Radisson Blu Edwardian Vanderbilt,London,3243,Radisson Blu Edwardian Vanderbilt,London England,exact,1.0
+240,Royal Garden Hotel,London,790,Royal Garden Hotel,London England,exact,1.0
+495,Rubens At The Palace,London,2337,The Rubens at the Palace,London England,exact,1.0
+131,Saint Georges Hotel,London,3098,Saint Georges Hotel,London England,exact,1.0
+709,Shaftesbury Metropolis London Hyde Park,London,16782,Shaftesbury Metropolis London Hyde Park,London England,exact,1.0
+1186,Sheraton Grand London Park Lane,London,45319,Sheraton Grand London Park Lane,London England,exact,1.0
+1292,Sloane Square Hotel,London,23274,Sloane Square Hotel,London England,exact,1.0
+649,Sofitel London St James,London,1972,Sofitel London St James,London England,exact,1.0
+407,South Place Hotel,London,38461,South Place Hotel,London England,exact,1.0
+249,St Ermin s Hotel Autograph Collection,London,28706,St Ermin s Hotel Autograph Collection,London England,exact,1.0
+173,St Paul s Hotel,London,42655,St Paul s Hotel,London England,exact,1.0
+60,Staybridge Suites London Vauxhall,London,43399,Staybridge Suites London Vauxhall,London England,exact,1.0
+716,Ten Manchester Street Hotel,London,21515,No Ten Manchester Street,London England,fuzzy,0.9333333333333333
+37,The Ampersand Hotel,London,37073,The Ampersand Hotel,London England,exact,1.0
+438,The Beaufort,London,519,The Beaufort Hotel,London England,exact,1.0
+720,The Beaumont Hotel,London,43113,The Beaumont,London England,exact,1.0
+175,The Bloomsbury Hotel,London,17128,The Bloomsbury,London England,exact,1.0
+845,The Capital,London,13744,The Capital Hotel,London England,exact,1.0
+127,The Chamberlain,London,6120,Chamberlain Hotel,London England,exact,1.0
+462,The Chesterfield Mayfair,London,241,The Chesterfield Mayfair,London England,exact,1.0
+491,The Cleveland,London,28768,The Cleveland Hotel,London England,exact,1.0
+33,The Cranley Hotel,London,1901,The Cranley Hotel,London England,exact,1.0
+269,The Drayton Court Hotel,London,34225,The Drayton Court Hotel,London England,exact,1.0
+714,The Exhibitionist Hotel,London,43130,The Exhibitionist Hotel,London England,exact,1.0
+237,The Gore Hotel Starhotels Collezione,London,2095,The Gore Starhotels Collezione,London England,exact,1.0
+723,The Grand at Trafalgar Square,London,8648,The Grand at Trafalgar Square,London England,exact,1.0
+61,The Grosvenor,London,32973,The Grosvenor Hotel,London England,exact,1.0
+1007,The Lanesborough,London,44533,The Lanesborough,London England,exact,1.0
+1201,The Langham London,London,46150,The Langham London,London England,exact,1.0
+725,The Laslett,London,44372,The Laslett,London England,exact,1.0
+166,The Leonard Hotel,London,15984,The Leonard Hotel,London England,exact,1.0
+367,The Levin Hotel,London,15877,The Levin,London England,exact,1.0
+426,The Marble Arch London,London,28601,The Marble Arch London,London England,exact,1.0
+603,The Montcalm At Brewery London City,London,41431,The Montcalm at the Brewery London City,London England,exact,1.0
+349,The Nadler Kensington,London,6144,The Nadler Kensington,London England,exact,1.0
+35,The Nadler Soho,London,39705,The Nadler Soho,London England,exact,1.0
+39,The Nadler Victoria,London,45026,The Nadler Victoria,London England,exact,1.0
+1202,The Ned,London,46295,The Ned,London England,exact,1.0
+209,The Park City Grand Plaza Kensington Hotel,London,5358,The Park City Grand Plaza Kensington Hotel,London England,exact,1.0
+3,The Park Grand London Paddington,London,25896,Park Grand London Paddington,London England,exact,1.0
+154,The Pelham Starhotels Collezione,London,593,The Pelham Starhotels Collezione,London England,exact,1.0
+667,The Piccadilly London West End,London,44991,The Piccadilly London West End,London England,exact,1.0
+321,The Portobello Hotel,London,8659,Portobello Hotel,London England,exact,1.0
+422,The Queens Gate Hotel,London,26218,The Queen s Gate Hotel,London England,fuzzy,0.9565217391304348
+168,The Ritz London,London,16366,The Ritz London,London England,exact,1.0
+218,The Rockwell,London,12565,The Rockwell,London England,exact,1.0
+1167,The Rookery,London,5004,The Rookery Hotel,London England,exact,1.0
+272,The Royal Horseguards,London,1167,The Royal Horseguards,London England,exact,1.0
+1302,The Stafford London,London,4161,The Stafford London,London England,exact,1.0
+55,The Victoria,London,35575,The Victoria,London England,exact,1.0
+78,The Wellesley Knightsbridge a Luxury Collection Hotel London,London,38282,The Wellesley Knightsbridge a Luxury Collection Hotel London,London England,exact,1.0
+597,The Westbourne Hyde Park,London,45713,The Westbourne Hyde Park,London England,exact,1.0
+562,The Whitechapel,London,37960,The Whitechapel Hotel,London England,exact,1.0
+747,The Zetter Hotel,London,3335,The Zetter Hotel,London England,exact,1.0
+772,Thistle Hyde Park,London,1458,Thistle Hyde Park,London England,exact,1.0
+1483,Thistle Trafalgar Square The Royal Trafalgar,London,34490,Thistle Trafalgar Square The Royal Trafalgar,London England,exact,1.0
+278,Twenty Nevern Square Hotel,London,4520,Twenty Nevern Square,London England,exact,1.0
+144,Windermere Hotel,London,30161,The Windermere Hotel,London England,exact,1.0
+276,citizenM London Bankside,London,35549,CitizenM London Bankside,London England,exact,1.0
+524,citizenM Tower of London,London,45559,CitizenM Tower of London Hotel,London England,exact,1.0
+1413,Antares Hotel Rubens,Milan,27429,Antares Hotel Rubens,Milan Lombardy,exact,1.0
+1416,Antica Locanda Dei Mercanti,Milan,35460,Antica Locanda dei Mercanti,Milan Lombardy,exact,1.0
+1455,Best Western Hotel Astoria,Milan,18785,Best Western Hotel Astoria,Milan Lombardy,exact,1.0
+893,Best Western Hotel City,Milan,1630,Best Western Hotel City,Milan Lombardy,exact,1.0
+1351,Best Western Plus Hotel Felice Casati,Milan,27415,Best Western Plus Hotel Felice Casati,Milan Lombardy,exact,1.0
+1179,Best Western Plus Hotel Galles,Milan,27631,Best Western Plus Hotel Galles,Milan Lombardy,exact,1.0
+1442,Bianca Maria Palace Hotel,Milan,45325,Bianca Maria Palace Hotel,Milan Lombardy,exact,1.0
+1408,Bulgari Hotel Milano,Milan,12553,Bulgari Hotel Milano,Milan Lombardy,exact,1.0
+1334,Camperio House Suites Apartments,Milan,26685,Camperio House Suites Apartments,Milan Lombardy,exact,1.0
+900,Carlyle Brera Hotel,Milan,12236,Carlyle Brera Hotel,Milan Lombardy,exact,1.0
+1393,Crowne Plaza Milan City,Milan,16634,Crowne Plaza Hotel Milan City,Milan Lombardy,exact,1.0
+1359,Four Points Sheraton Milan Center,Milan,11228,Four Points by Sheraton Milan Center,Milan Lombardy,exact,1.0
+1360,Four Seasons Hotel Milano,Milan,31547,Four Seasons Hotel Milano,Milan Lombardy,exact,1.0
+1385,Grand Hotel et de Milan,Milan,3272,Grand Hotel et de Milan,Milan Lombardy,exact,1.0
+1379,Hilton Garden Inn Milan North,Milan,43600,Hilton Garden Inn Milan North,Milan Lombardy,exact,1.0
+1381,Hilton Milan,Milan,7147,Hilton Milan,Milan Lombardy,exact,1.0
+1435,Holiday Inn Milan Garibaldi Station,Milan,8455,Holiday Inn Milan Garibaldi Station,Milan Lombardy,exact,1.0
+1399,Hotel Berna,Milan,4937,Hotel Berna,Milan Lombardy,exact,1.0
+1350,Hotel Cavour,Milan,6052,Hotel Cavour,Milan Lombardy,exact,1.0
+899,Hotel Galileo,Milan,6801,Hotel Galileo,Milan Lombardy,exact,1.0
+1421,Hotel Manzoni,Milan,15637,Hotel Manzoni,Milan Lombardy,exact,1.0
+1349,Hotel Marconi,Milan,19667,Marconi Hotel,Milan Lombardy,exact,1.0
+1182,Hotel Mercure Milano Centro,Milan,29865,Mercure Milano Centro,Milan Lombardy,exact,1.0
+1342,Hotel Milano Scala,Milan,32077,Hotel Milano Scala,Milan Lombardy,exact,1.0
+1177,Hotel Mozart,Milan,26464,Hotel Mozart,Milan Lombardy,exact,1.0
+1418,Hotel Santa Marta Suites,Milan,43559,Santa Marta Suites,Milan Lombardy,exact,1.0
+1427,Hotel Spadari Al Duomo,Milan,2507,Hotel Spadari al Duomo,Milan Lombardy,exact,1.0
+1457,Hotel degli Arcimboldi,Milan,44598,Hotel degli Arcimboldi,Milan Lombardy,exact,1.0
+1357,Idea Hotel Milano San Siro,Milan,24972,Idea Hotel Milano San Siro,Milan Lombardy,exact,1.0
+1437,Klima Hotel Milano Fiere,Milan,39393,Klima Hotel Milano Fiere,Milan Lombardy,exact,1.0
+1394,Leonardo Hotel Milan City Center,Milan,11584,Leonardo Hotel Milan City Center,Milan Lombardy,exact,1.0
+1170,ME Milan Il Duca,Milan,43852,ME Milan Il Duca,Milan Lombardy,exact,1.0
+792,Maison Borella,Milan,34308,Hotel Maison Borella,Milan Lombardy,exact,1.0
+1436,Milan Suite Hotel,Milan,41196,Milan Suite Hotel,Milan Lombardy,exact,1.0
+1058,NH Collection Milano President,Milan,38309,NH Collection Milano President,Milan Lombardy,exact,1.0
+1430,NH Milano Touring,Milan,44284,NH Milano Touring,Milan Lombardy,exact,1.0
+1183,NYX Milan,Milan,46218,NYX Hotel Milan,Milan Lombardy,exact,1.0
+1458,Novotel Milano Nord Ca Granda,Milan,13091,Novotel Milan Nord Ca Granda,Milan Lombardy,fuzzy,0.9824561403508771
+1417,Palazzo Segreti,Milan,34354,Palazzo Segreti,Milan Lombardy,exact,1.0
+1429,Ramada Plaza Milano,Milan,27867,Ramada Plaza Milano,Milan Lombardy,exact,1.0
+1422,Senato Hotel Milano,Milan,44531,Senato Hotel Milano,Milan Lombardy,exact,1.0
+1366,Sina De La Ville,Milan,44149,Sina De La Ville,Milan Lombardy,exact,1.0
+1415,Sina The Gray,Milan,12118,Sina The Gray,Milan Lombardy,exact,1.0
+1329,The Square Milano Duomo,Milan,43770,The Square Milano Duomo,Milan Lombardy,exact,1.0
+891,Worldhotel Cristoforo Colombo,Milan,10348,WORLDHOTEL Cristoforo Colombo,Milan Lombardy,exact,1.0
+692,Arioso,Paris,18855,Hotel Arioso,Paris Ile de France,exact,1.0
+159,Bassano,Paris,9379,Hotel Bassano,Paris Ile de France,exact,1.0
+436,Best Western Allegro Nation,Paris,3215,Best Western Allegro Nation,Paris Ile de France,exact,1.0
+765,Best Western Le Jardin de Cluny,Paris,600,Best Western Jardin De Cluny,Paris Ile de France,fuzzy,0.9433962264150944
+115,Best Western Mercedes Arc de Triomphe,Paris,39779,Best Western Hotel Mercedes Arc De Triomphe,Paris Ile de France,exact,1.0
+346,Best Western Nouvel Orl ans Montparnasse,Paris,1068,Best Western Nouvel Orleans Montparnasse,Paris Ile de France,fuzzy,0.975
+160,Best Western Premier Le Swann,Paris,41821,Best Western Premier Le Swann,Paris Ile de France,exact,1.0
+571,Best Western Premier Trocadero La Tour,Paris,4758,Best Western Premier Trocadero La Tour,Paris Ile de France,exact,1.0
+53,Bradford Elys es Astotel,Paris,40392,Hotel Bradford Elysees Astotel,Paris Ile de France,fuzzy,0.9583333333333334
+507,Buddha Bar Hotel Paris,Paris,40841,Buddha Bar Hotel Paris,Paris Ile de France,exact,1.0
+728,Chambiges Elys es,Paris,7340,Chambiges Elysees Hotel,Paris Ile de France,fuzzy,0.9411764705882353
+613,Chateau Frontenac,Paris,11559,Hotel Chateau Frontenac,Paris Ile de France,exact,1.0
+41,Crowne Plaza Paris R publique,Paris,401,Crowne Plaza Paris Republique,Paris Ile de France,fuzzy,0.9655172413793104
+214,Franklin Roosevelt,Paris,29092,Hotel Franklin D Roosevelt,Paris Ile de France,fuzzy,0.9473684210526315
+109,Garden Elys e,Paris,16020,Garden Elysee Hotel,Paris Ile de France,fuzzy,0.9230769230769231
+19,Gardette Park Hotel,Paris,35396,Gardette Park Hotel,Paris Ile de France,exact,1.0
+487,H tel L Echiquier Op ra Paris MGallery by Sofitel,Paris,44885,Hotel L Echiquier Opera Paris MGallery by Sofitel,Paris Ile de France,fuzzy,0.9069767441860465
+344,Holiday Inn Paris Elys es,Paris,32453,Holiday Inn Paris Elysees,Paris Ile de France,fuzzy,0.96
+331,Holiday Inn Paris Montmartre,Paris,26673,Holiday Inn Paris Montmartre,Paris Ile de France,exact,1.0
+49,Holiday Inn Paris Montparnasse Pasteur,Paris,7235,Holiday Inn Paris Montparnasse Pasteur,Paris Ile de France,exact,1.0
+409,Holiday Inn Paris Op ra Grands Boulevards,Paris,34619,Holiday Inn Paris Opera Grands Boulevards,Paris Ile de France,fuzzy,0.975609756097561
+383,Hotel Duminy Vendome,Paris,42224,Duminy Vendome,Paris Ile de France,exact,1.0
+86,Hotel Eden,Paris,39616,Hotel Eden,Paris Ile de France,exact,1.0
+476,Hotel Georgette,Paris,38161,Hotel Georgette,Paris Ile de France,exact,1.0
+260,Hotel Indigo Paris Opera,Paris,42708,Hotel Indigo Paris Opera,Paris Ile de France,exact,1.0
+27,Hotel L Antoine,Paris,44445,Hotel L Antoine,Paris Ile de France,exact,1.0
+598,Hotel Le Mareuil,Paris,37892,Le Mareuil,Paris Ile de France,exact,1.0
+264,Hotel Louis 2,Paris,32155,Hotel Louis 2,Paris Ile de France,exact,1.0
+110,Hotel Louvre Montana,Paris,35788,Hotel Louvre Montana,Paris Ile de France,exact,1.0
+162,Hotel Lumen Paris Louvre,Paris,18140,Hotel Lumen Paris Louvre,Paris Ile de France,exact,1.0
+695,Hotel Mademoiselle,Paris,40608,Hotel Mademoiselle,Paris Ile de France,exact,1.0
+661,Hotel Malte Astotel,Paris,46302,Hotel Malte Astotel,Paris Ile de France,exact,1.0
+105,Hotel Marignan Champs Elys es,Paris,38990,Hotel Marignan Champs Elysees,Paris Ile de France,fuzzy,0.9565217391304348
+620,Hotel Monge,Paris,45643,Hotel Monge,Paris Ile de France,exact,1.0
+400,Hotel Montalembert,Paris,12555,Hotel Montalembert,Paris Ile de France,exact,1.0
+137,Hotel Op ra Richepanse,Paris,5687,Hotel Opera Richepanse,Paris Ile de France,fuzzy,0.9375
+342,Hotel Opera Cadet,Paris,1452,Opera Cadet Hotel,Paris Ile de France,exact,1.0
+319,Hotel Parc Saint Severin Esprit de France,Paris,14555,Hotel Parc St Severin Esprit de France,Paris Ile de France,fuzzy,0.9508196721311475
+332,Hotel Pulitzer Paris,Paris,27198,Hotel Pulitzer Paris,Paris Ile de France,exact,1.0
+22,Hotel Scribe Paris Opera by Sofitel,Paris,3387,Hotel Scribe Paris Opera by Sofitel,Paris Ile de France,exact,1.0
+10,Hotel Trianon Rive Gauche,Paris,10222,Hotel Trianon Rive Gauche,Paris Ile de France,exact,1.0
+691,Hotel West End,Paris,13808,West End Hotel,Paris Ile de France,exact,1.0
+475,Hotel Whistler,Paris,46317,Hotel Whistler,Paris Ile de France,exact,1.0
+375,Hotel du Petit Moulin,Paris,2716,Hotel du Petit Moulin,Paris Ile de France,exact,1.0
+391,Hyatt Regency Paris Etoile,Paris,46716,Hyatt Regency Paris Etoile,Paris Ile de France,exact,1.0
+180,Idol Hotel,Paris,44861,Idol Hotel,Paris Ile de France,exact,1.0
+663,InterContinental Paris Avenue Marceau,Paris,18259,InterContinental Paris Avenue Marceau,Paris Ile de France,exact,1.0
+265,InterContinental Paris Le Grand,Paris,3798,InterContinental Paris Le Grand,Paris Ile de France,exact,1.0
+560,L Empire Paris,Paris,12582,L Empire Paris,Paris Ile de France,exact,1.0
+734,La Maison Champs Elys es,Paris,36063,La Maison Champs Elysees,Paris Ile de France,fuzzy,0.9583333333333334
+145,La Villa Maillot,Paris,12096,La Villa Maillot,Paris Ile de France,exact,1.0
+113,Le 123 Elysees Astotel,Paris,6614,Hotel Le 123 Elysees Astotel,Paris Ile de France,exact,1.0
+508,Le A,Paris,13794,Hotel Le A,Paris Ile de France,exact,1.0
+95,Le Dokhan s a Tribute Portfolio Hotel,Paris,9573,Le Dokhan s a Tribute Portfolio Hotel,Paris Ile de France,exact,1.0
+106,Le Grey Hotel,Paris,39364,Le Grey Hotel,Paris Ile de France,exact,1.0
+299,Le Lavoisier,Paris,210,Hotel le Lavoisier,Paris Ile de France,exact,1.0
+124,Le Marceau Bastille,Paris,8363,Le Marceau Bastille Hotel,Paris Ile de France,exact,1.0
+42,Le Metropolitan a Tribute Portfolio Hotel,Paris,34161,Le Metropolitan a Tribute Portfolio Hotel Paris,Paris Ile de France,fuzzy,0.9166666666666666
+327,Le Meurice,Paris,16795,Le Meurice,Paris Ile de France,exact,1.0
+225,Le Narcisse Blanc Spa,Paris,45977,Le Narcisse Blanc Hotel Spa,Paris Ile de France,exact,1.0
+369,Le Pavillon de la Reine Spa,Paris,6712,Le Pavillon de la Reine,Paris Ile de France,exact,1.0
+107,Le Pavillon des Lettres,Paris,31051,Le Pavillon des Lettres,Paris Ile de France,exact,1.0
+589,Le Pradey,Paris,35815,Hotel Le Pradey,Paris Ile de France,exact,1.0
+371,Le Roch Hotel Spa,Paris,45860,Le Roch Hotel Spa,Paris Ile de France,exact,1.0
+402,Le Saint Hotel Paris,Paris,22833,Le Saint Hotel A Paris,Paris Ile de France,exact,1.0
+47,Le Senat,Paris,3103,Hotel le Senat,Paris Ile de France,exact,1.0
+51,Les Plumes Hotel,Paris,40144,Les Plumes Hotel,Paris Ile de France,exact,1.0
+440,Madeleine Plaza,Paris,10139,Hotel Madeleine Plaza,Paris Ile de France,exact,1.0
+353,Mandarin Oriental Paris,Paris,29524,Mandarin Oriental Paris,Paris Ile de France,exact,1.0
+694,Melia Paris Notre Dame,Paris,869,Melia Paris Notre Dame,Paris Ile de France,exact,1.0
+467,Melia Paris Tour Eiffel,Paris,26454,Melia Paris Tour Eiffel,Paris Ile de France,exact,1.0
+305,Mercure Paris 19 Philharmonie La Villette,Paris,12957,Mercure Paris 19 Philharmonie La Villette Hotel,Paris Ile de France,exact,1.0
+362,Mercure Paris Arc de Triomphe Etoile,Paris,26883,Mercure Paris Arc de Triomphe Etoile,Paris Ile de France,exact,1.0
+610,Mercure Paris Bastille Marais,Paris,39942,Mercure Paris Bastille Marais,Paris Ile de France,exact,1.0
+665,Mercure Paris Bastille Saint Antoine,Paris,38437,Mercure Paris Bastille Saint Antoine,Paris Ile de France,exact,1.0
+721,Mercure Paris Gobelins Place d Italie,Paris,20140,Mercure Paris Gobelins Place d Italie,Paris Ile de France,exact,1.0
+394,Mercure Paris Montmartre Sacr Coeur,Paris,18280,Mercure Paris Montmartre Sacre Coeur,Paris Ile de France,fuzzy,0.9859154929577465
+290,Mercure Paris Montparnasse Raspail,Paris,11519,Mercure Paris Montparnasse Raspail,Paris Ile de France,exact,1.0
+283,Mercure Paris Notre Dame Saint Germain des Pr s,Paris,3100,Mercure Paris Notre Dame Saint Germain des Pres,Paris Ile de France,fuzzy,0.9787234042553191
+582,Mercure Paris Op ra Faubourg Montmartre,Paris,23652,Mercure Paris Opera Faubourg Montmartre,Paris Ile de France,fuzzy,0.9743589743589743
+510,Mercure Paris Opera Garnier,Paris,8162,Mercure Paris Opera Garnier,Paris Ile de France,exact,1.0
+778,Mercure Paris Opera Louvre,Paris,44462,Mercure Paris Opera Louvre,Paris Ile de France,exact,1.0
+664,Mercure Tour Eiffel Grenelle,Paris,12636,Mercure Paris Tour Eiffel Grenelle Hotel,Paris Ile de France,fuzzy,0.9032258064516129
+98,Millennium Hotel Paris Opera,Paris,1077,Millennium Hotel Paris Opera,Paris Ile de France,exact,1.0
+655,Novotel Paris Centre Tour Eiffel,Paris,4347,Novotel Paris Centre Tour Eiffel,Paris Ile de France,exact,1.0
+262,Novotel Paris Gare De Lyon,Paris,5775,Novotel Paris Gare de Lyon,Paris Ile de France,exact,1.0
+726,Novotel Paris Les Halles,Paris,4222,Novotel Paris Les Halles,Paris Ile de France,exact,1.0
+355,Novotel Paris Vaugirard Montparnasse,Paris,71,Novotel Paris Vaugirard Montparnasse,Paris Ile de France,exact,1.0
+580,Park Hyatt Paris Vendome,Paris,5774,Park Hyatt Paris Vendome,Paris Ile de France,exact,1.0
+281,Platine Hotel Spa,Paris,34996,Platine Hotel,Paris Ile de France,exact,1.0
+432,Plaza Tour Eiffel,Paris,16933,Plaza Tour Eiffel,Paris Ile de France,exact,1.0
+437,Prince de Galles a Luxury Collection hotel Paris,Paris,39635,Prince de Galles a Luxury Collection Hotel Paris,Paris Ile de France,exact,1.0
+18,Pullman Paris Centre Bercy,Paris,12684,Pullman Paris Centre Bercy,Paris Ile de France,exact,1.0
+668,R Kipling by Happyculture,Paris,44895,Hotel R Kipling by HappyCulture,Paris Ile de France,exact,1.0
+710,Radisson Blu Champs Elys es Paris,Paris,3276,Radisson Blu Hotel Champs Elysees Paris,Paris Ile de France,fuzzy,0.9696969696969697
+232,Relais Du Louvre,Paris,10464,Le Relais du Louvre,Paris Ile de France,fuzzy,0.9142857142857143
+392,Relais Saint Jacques,Paris,5905,Relais Saint Jacques,Paris Ile de France,exact,1.0
+523,Renaissance Paris Republique Hotel Spa,Paris,45383,Renaissance Paris Republique Hotel,Paris Ile de France,exact,1.0
+514,Renaissance Paris Vendome Hotel,Paris,1724,Renaissance Paris Vendome Hotel,Paris Ile de France,exact,1.0
+733,Residence Du Roy,Paris,13483,Residence du Roy Hotel,Paris Ile de France,exact,1.0
+595,Residence Henri IV,Paris,1723,Hotel Residence Henri 4,Paris Ile de France,fuzzy,0.9142857142857143
+156,Ritz Paris,Paris,45443,Ritz Paris,Paris Ile de France,exact,1.0
+322,Royal Saint Honore,Paris,830,Hotel Royal Saint Honore,Paris Ile de France,exact,1.0
+751,Sofitel Paris Baltimore Tour Eiffel,Paris,46498,Sofitel Paris Baltimore Tour Eiffel,Paris Ile de France,exact,1.0
+642,The Chess Hotel,Paris,42571,The Chess Hotel,Paris Ile de France,exact,1.0
+399,The Westin Paris Vend me,Paris,637,The Westin Paris Vendome,Paris Ile de France,fuzzy,0.95
+635,Victoria Palace Hotel,Paris,351,Victoria Palace,Paris Ile de France,exact,1.0
+760,Villa Alessandra,Paris,791,Villa Alessandra,Paris Ile de France,exact,1.0
+189,Villa Eugenie,Paris,28496,Villa Eugenie,Paris Ile de France,exact,1.0
+253,Villa Montparnasse,Paris,3300,Villa Montparnasse,Paris Ile de France,exact,1.0
+202,Villa d Estr es,Paris,3846,Hotel Villa d Estrees,Paris Ile de France,fuzzy,0.9333333333333333
+48,Windsor Opera,Paris,4939,Hotel Windsor Opera,Paris Ile de France,exact,1.0
+1109,ARCOTEL Wimberger,Vienna,9106,Arcotel Wimberger Hotel,Vienna,exact,1.0
+1475,Austria Trend Hotel Anatol Wien,Vienna,31965,Austria Trend Hotel Anatol Wien,Vienna,exact,1.0
+977,Austria Trend Hotel Bosei Wien,Vienna,25074,Austria Trend Hotel Bosei Wien,Vienna,exact,1.0
+1032,Austria Trend Hotel Europa Wien,Vienna,5557,Austria Trend Hotel Europa Wien,Vienna,exact,1.0
+1224,Austria Trend Hotel Rathauspark Wien,Vienna,179,Austria Trend Hotel Rathauspark Wien,Vienna,exact,1.0
+1270,Austria Trend Hotel Schloss Wilhelminenberg Wien,Vienna,7446,Austria Trend Hotel Schloss Wilhelminenberg Wien,Vienna,exact,1.0
+1055,BEST WESTERN PLUS Amedia Wien,Vienna,34569,Best Western Plus Amedia Wien,Vienna,exact,1.0
+1319,Courtyard by Marriott Vienna Prater Messe,Vienna,27530,Courtyard by Marriott Vienna Prater Messe,Vienna,exact,1.0
+1308,DO CO Hotel Vienna,Vienna,19183,DO CO Hotel Vienna,Vienna,exact,1.0
+1488,Das Triest Hotel,Vienna,4298,Hotel Das Triest,Vienna,exact,1.0
+1127,Exe Vienna,Vienna,591,Hotel Exe Vienna,Vienna,exact,1.0
+1022,Fleming s Selection Hotel Wien City,Vienna,27850,Fleming s Selection Hotel Wien City,Vienna,exact,1.0
+927,Graben Hotel,Vienna,465,Graben Hotel,Vienna,exact,1.0
+795,Hilton Vienna,Vienna,7374,Hilton Vienna,Vienna,exact,1.0
+984,Hilton Vienna Danube Waterfront,Vienna,15,Hilton Vienna Danube Waterfront,Vienna,exact,1.0
+1025,Hollmann Beletage Design Boutique,Vienna,7666,Hollmann Beletage Design Boutique Hotel,Vienna,exact,1.0
+793,Hotel Am Konzerthaus Vienna MGallery by Sofitel,Vienna,24126,Hotel Am Konzerthaus Vienna MGallery by Sofitel,Vienna,exact,1.0
+1140,Hotel Am Parkring,Vienna,5784,Hotel Am Parkring,Vienna,exact,1.0
+1030,Hotel Ambassador,Vienna,4419,Hotel Ambassador,Vienna,exact,1.0
+1285,Hotel Capricorno,Vienna,44187,Hotel Capricorno,Vienna,exact,1.0
+1053,Hotel Daniel Vienna,Vienna,34636,Hotel Daniel Vienna,Vienna,exact,1.0
+1316,Hotel Das Tigra,Vienna,11516,Hotel Das Tigra,Vienna,exact,1.0
+1476,Hotel Kaiserin Elisabeth,Vienna,5059,Kaiserin Elisabeth,Vienna,exact,1.0
+801,Hotel Mailberger Hof,Vienna,23941,Hotel Mailbergerhof,Vienna,fuzzy,0.9629629629629629
+1251,Hotel Regina,Vienna,1879,Hotel Regina,Vienna,exact,1.0
+1291,Hotel Royal,Vienna,20761,Hotel Royal,Vienna,exact,1.0
+1065,Hotel Topazz,Vienna,35816,Hotel Topazz,Vienna,exact,1.0
+859,Hotel ViennArt am Museumsquartier,Vienna,390,Hotel Viennart am Museumsquartier,Vienna,exact,1.0
+1168,Hotel Wandl,Vienna,21709,Hotel Wandl,Vienna,exact,1.0
+1041,K K Hotel Maria Theresia,Vienna,6438,K K Hotel Maria Theresia,Vienna,exact,1.0
+926,Melia Vienna,Vienna,42084,Melia Vienna,Vienna,exact,1.0
+1056,Mercure Grand Hotel Biedermeier Wien,Vienna,34476,Mercure Grand Hotel Biedermeier Wien,Vienna,exact,1.0
+955,Mercure Secession Wien,Vienna,16942,Mercure Secession Wien,Vienna,exact,1.0
+916,Mercure Vienna First,Vienna,44325,Mercure Vienna First,Vienna,exact,1.0
+1094,NH Collection Wien Zentrum,Vienna,44582,NH Collection Wien Zentrum,Vienna,exact,1.0
+1092,NH Wien City,Vienna,5427,NH Wien City,Vienna,exact,1.0
+811,Novotel Wien City,Vienna,17816,Novotel Wien City,Vienna,exact,1.0
+794,Park Hyatt Vienna,Vienna,41984,Park Hyatt Vienna,Vienna,exact,1.0
+1469,Park Inn by Radisson Uno City Vienna,Vienna,29470,Park Inn by Radisson Uno City Vienna,Vienna,exact,1.0
+978,Pertschy Palais Hotel,Vienna,1235,Pertschy Palais Hotel,Vienna,exact,1.0
+800,Schlosshotel R mischer Kaiser,Vienna,1459,Schlosshotel Roemischer Kaiser,Vienna,fuzzy,0.9491525423728814
+993,Senator Hotel Vienna,Vienna,24408,Senator Hotel Vienna,Vienna,exact,1.0
+995,Steigenberger Hotel Herrenhof,Vienna,17558,Steigenberger Hotel Herrenhof Wien,Vienna,fuzzy,0.9019607843137255
+1489,Suite Hotel 900 m zur Oper,Vienna,12451,Suite Hotel 900 m zur Oper,Vienna,exact,1.0
+986,The Harmonie Vienna,Vienna,40507,The Harmonie Vienna,Vienna,exact,1.0

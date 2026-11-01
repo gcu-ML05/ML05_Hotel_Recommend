@@ -114,12 +114,14 @@ def main():
     print(f"호텔 TF-IDF 저장: {T.shape}, nnz {T.nnz:,}")
 
     # 리뷰가 많은 호텔 5곳의 상위 단어 (발표/보고서 설명용)
+    hm = pd.read_csv(HOTELREC_DIR / "hotel_map.csv", encoding="utf-8-sig").set_index("hotel_id")
     top_h = tr.hotel_id.value_counts().index[:5]
     rows = []
     for h in top_h:
         r = T.getrow(h)
         order = np.argsort(-r.data)[:10]
-        rows.append({"hotel_id": h, "top_terms": ", ".join(vocab[r.indices[order]])})
+        rows.append({"hotel_id": h, "hotel_name": hm.at[h, "hotel_name"], "location": hm.at[h, "location"],
+                     "top_terms": ", ".join(vocab[r.indices[order]])})
     top = pd.DataFrame(rows)
     print(top.to_string(index=False))
     save_table(top, "03_hotel_top_terms")
