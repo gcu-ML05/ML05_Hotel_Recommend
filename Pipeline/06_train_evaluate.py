@@ -20,6 +20,16 @@ Item-kNN은 개선판(KNNBaseline + 분모 축소 + 공동 방문 순위 점수)
 
 하이브리드 (제안서 ④):  score = λ · MF + (1 - λ) · ContentBased,  λ는 val NDCG@10이 가장 높은 값
 
+편차 기반 선호 연결 (04·05단계의 user_personas_dev_tuned.csv)
+    PersonaPopularity(편차): 05의 페르소나(까다로움 유형)가 같은 사용자들이 4점 이상 준 호텔을 추천
+    Content(까다로움): 콘텐츠 기반의 aspect 가중치를 사용자가 까다롭게 보는 aspect 쪽으로 기울인다.
+        w_uk = w_g,k · exp(τ · strict_uk),  Σ_k w_uk = Σ_k w_g,k 가 되도록 정규화 (평점 척도 유지)
+        절편 = w_g,0 + κ · 관대함_u   (관대함은 사용자마다 상수라 순위는 바꾸지 않고 평점만 보정)
+        τ는 val NDCG@10, κ는 val 평점 잔차의 최소제곱으로 고른다.
+        까다로움은 세 가지로 비교: 개인 / 페르소나 평균 / 이력이 적은 사용자(train 리뷰 COLD_MAX건 미만)만 페르소나
+        (마지막이 역할표의 "콜드스타트 시 페르소나 가중치로 대체")
+    Hybrid(까다로움): λ · MF + (1 - λ) · Content(까다로움, 이력 적으면 페르소나), λ는 val NDCG@10
+
 출력: Pipeline/outputs/06_*.csv, figures/06_*.png
 """
 import argparse
@@ -29,16 +39,44 @@ import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 
-from common import (HOTELREC_DIR, SEED, WORK_DIR, ensure_dirs, load_split, mae, ranking_metrics, rmse,
+from common import (ASPECTS, HOTELREC_DIR, SEED, WORK_DIR, ensure_dirs, load_split, mae, ranking_metrics, rmse,
                     sample_candidates, sample_city_candidates, save_fig, save_table, setup_plot)
 from models import BiasBaseline, BiasedMF, ContentBased, ItemKNN, PersonaPopularity, Popularity
 
 LAMBDAS = np.round(np.arange(0, 1.01, 0.1), 1)
 ACTIVITY_BINS = [3, 5, 10, 20, np.inf]
+# 까다로움 반영 강도 후보. 까다로움은 점수 단위로 대부분 ±0.1 이내라 τ가 수십~수백이어야 가중치가 달라진다.
+# (가장 까다로운 aspect의 가중치 비율 중앙값: τ=80 → 0.66, 160 → 0.89, 320 → 0.99)
+TAUS = [0, 5, 10, 20, 40, 80, 160, 320]
+COLD_MAX = 5                        # train 리뷰가 이보다 적은 사용자는 개인 대신 페르소나 까다로움 사용
+ACTIVITY_PLOT = ["Popularity", "ItemKNN", "MF", "Content(aspect+text)", "Content(까다로움, 이력 적으면 페르소나)"]
 
 
 def arrays(df):
     return df.user_id.to_numpy(), df.hotel_id.to_numpy(), df.rating.to_numpy(float)
+
+
+def strict_weights(w_g, S, tau, leniency=None, kappa=0.0):
+    """
+    까다로움을 반영한 사용자별 [절편, aspect 가중치 6개] (ContentBased의 W와 같은 형식)
+        w_uk ∝ w_g,k · exp(τ · S_uk), 합은 전역 가중치와 같게 맞춤 / 절편 = w_g,0 + κ · 관대함
+    """
+    w = w_g[1:] * np.exp(tau * S)
+    w *= w_g[1:].sum() / w.sum(1, keepdims=True)
+    w0 = w_g[0] + (kappa * leniency if leniency is not None else 0.0)
+    return np.column_stack([np.broadcast_to(w0, len(S)), w])
+
+
+def cache_pairs(f):
+    """같은 (사용자, 호텔) 배열에 대한 결과를 저장해 두고 재사용 (텍스트 유사도를 여러 콘텐츠 변형이 공유)"""
+    memo = {}
+
+    def g(a, b):
+        key = (a.size, hash(a.tobytes()), hash(b.tobytes()))
+        if key not in memo:
+            memo[key] = f(a, b)
+        return memo[key]
+    return g
 
 
 def main():
@@ -69,6 +107,18 @@ def main():
     A = np.load(WORK_DIR / "hotel_aspects.npy")
     T = sp.load_npz(WORK_DIR / "hotel_tfidf.npz")
 
+    # 04·05단계 편차 기반 선호: 관대함, aspect별 까다로움(개인, train만으로 계산), 페르소나
+    dev = pd.read_csv(WORK_DIR / "user_personas_dev_tuned.csv").sort_values("user_id")
+    assert len(dev) == n_users and (dev.user_id.to_numpy() == np.arange(n_users)).all()
+    leni = dev.leniency.to_numpy()
+    strict = dev[[f"strict_{a}" for a in ASPECTS]].to_numpy()
+    persona_dev = dev.persona.to_numpy()
+    strict_p = pd.DataFrame(strict).groupby(persona_dev).transform("mean").to_numpy()   # 페르소나 평균 까다로움
+    cold = np.bincount(u, minlength=n_users) < COLD_MAX
+    strict_c = np.where(cold[:, None], strict_p, strict)
+    print(f"편차 기반 선호 로드: 페르소나 {persona_dev.max() + 1}개, 이력이 적은 사용자(train {COLD_MAX}건 미만) "
+          f"{cold.mean():.1%}")
+
     # ------------------------------------------------------------ 학습
     print("[1/4] 모델 학습")
     times = {}
@@ -81,7 +131,8 @@ def main():
 
     base = timed("Baseline", lambda: BiasBaseline().fit(u, i, r, n_users, n_hotels))
     pop = timed("Popularity", lambda: Popularity().fit(u, i, r, n_users, n_hotels))
-    ppop = timed("PersonaPopularity", lambda: PersonaPopularity(persona).fit(u, i, r, n_users, n_hotels))
+    ppop = timed("PersonaPopularity(회귀)", lambda: PersonaPopularity(persona).fit(u, i, r, n_users, n_hotels))
+    ppop_dev = timed("PersonaPopularity(편차)", lambda: PersonaPopularity(persona_dev).fit(u, i, r, n_users, n_hotels))
     knn = timed("ItemKNN", lambda: ItemKNN(k=args.knn_k, shrink=args.knn_shrink, damp=args.knn_damp)
                 .fit(u, i, r, n_users, n_hotels))
     # 비교용 기존판: 사용자 평균 기준(adjusted cosine), 축소 약하게, 분모 축소 없음
@@ -89,7 +140,9 @@ def main():
                     .fit(u, i, r, n_users, n_hotels))
     mf = timed("MF", lambda: BiasedMF(k=args.mf_k, lr=args.mf_lr, reg=args.mf_reg, epochs=args.mf_epochs)
                .fit(u, i, r, n_users, n_hotels, val=val))
-    cb = timed("Content", lambda: ContentBased(W, A, T).fit(u, i, r, n_users, n_hotels).fit_gamma(*val))
+    cb = ContentBased(W, A, T)
+    cb.text_sim = cache_pairs(cb.text_sim)          # 텍스트 유사도는 아래 콘텐츠 변형들이 함께 재사용
+    cb = timed("Content", lambda: cb.fit(u, i, r, n_users, n_hotels).fit_gamma(*val))
     # 비교용: 개인 가중치 대신 모든 사용자에게 전역 가중치를 쓴 콘텐츠 기반 (aspect 효용만)
     cb_g = ContentBased(np.tile(w_g, (n_users, 1)), A, T)
 
@@ -115,8 +168,9 @@ def main():
         "Content(aspect, 개인 w)": lambda a, b: np.clip(cb.utility(a, b), 1, 5),
         "Content(aspect+text)": cb.predict,
     }
-    rank_models = {"Popularity": pop.predict, "PersonaPopularity": ppop.predict, **{
-        k: v for k, v in rating_models.items() if k != "GlobalMean"}}
+    rank_models = {"Popularity": pop.predict, "PersonaPopularity(회귀)": ppop.predict,
+                   "PersonaPopularity(편차)": ppop_dev.predict,
+                   **{k: v for k, v in rating_models.items() if k != "GlobalMean"}}
     rank_models["ItemKNN"] = knn.rank_score          # 개선판은 순위용 점수(공동 방문 유사도 합)를 따로 씀
 
     # ------------------------------------------------------------ 후보 생성
@@ -134,19 +188,61 @@ def main():
     def scores(f, users, cand):
         return f(np.repeat(users, cand.shape[1]), cand.ravel()).reshape(cand.shape)
 
+    # ------------------------------------------------------------ 편차 기반 선호 연결 (val로 τ, κ 선택)
+    print("[3/4] 편차 기반 선호 연결(τ, κ)과 하이브리드 λ 선택 (val)")
+    vc_u, vc_i = np.repeat(val_users, val_cand.shape[1]), val_cand.ravel()
+    v_sim = cb.text_sim(vc_u, vc_i).reshape(val_cand.shape)
+    tau_rows = []
+    for tau in TAUS:
+        util = ContentBased(strict_weights(w_g, strict, tau), A, T).utility(vc_u, vc_i).reshape(val_cand.shape)
+        met, _ = ranking_metrics(util + cb.gamma * (v_sim - cb.s_mean))
+        tau_rows.append({"tau": tau, **met})
+    tau_tab = pd.DataFrame(tau_rows)
+    tau = float(tau_tab.loc[tau_tab["NDCG@10"].idxmax(), "tau"])
+    # κ: 관대함으로 val 평점 잔차를 설명하는 계수 (절편 없는 최소제곱 = Σ L·잔차 / Σ L²)
+    util_v = (ContentBased(strict_weights(w_g, strict, tau), A, T).utility(val[0], val[1])
+              + cb.gamma * (cb.text_sim(val[0], val[1]) - cb.s_mean))
+    Lv = leni[val[0]]
+    kappa = float((Lv * (val[2] - util_v)).sum() / (Lv * Lv).sum())
+    tau_tab["selected"] = tau_tab.tau == tau
+    tau_tab["kappa"] = kappa
+    print(tau_tab.round(4).to_string(index=False))
+    print(f"   선택 τ = {tau}, 관대함 계수 κ = {kappa:.3f}")
+    save_table(tau_tab, "06_strictness_tau")
+
+    def content_strict(S):
+        """까다로움 S를 반영한 콘텐츠 기반 (텍스트 프로필·γ는 기존 콘텐츠 기반과 공유)"""
+        m = ContentBased(strict_weights(w_g, S, tau, leni, kappa), A, T)
+        m.R, m.gamma, m.s_mean, m.text_sim = cb.R, cb.gamma, cb.s_mean, cb.text_sim
+        return m
+
+    cbs = {"Content(까다로움, 개인)": content_strict(strict),
+           "Content(까다로움, 페르소나)": content_strict(strict_p),
+           "Content(까다로움, 이력 적으면 페르소나)": content_strict(strict_c)}
+    for name, m in cbs.items():
+        rating_models[name] = rank_models[name] = m.predict
+    cb_cold = cbs["Content(까다로움, 이력 적으면 페르소나)"]
+
     # ------------------------------------------------------------ 하이브리드 λ 선택 (val)
-    print("[3/4] 하이브리드 λ 선택 (val)")
-    v_mf, v_cb = scores(mf.predict, val_users, val_cand), scores(cb.predict, val_users, val_cand)
-    vp_mf, vp_cb = mf.predict(val[0], val[1]), cb.predict(val[0], val[1])
-    lam_rows = []
-    for lam in LAMBDAS:
-        met, _ = ranking_metrics(lam * v_mf + (1 - lam) * v_cb)
-        lam_rows.append({"lambda": lam, "val_rmse": rmse(val[2], lam * vp_mf + (1 - lam) * vp_cb), **met})
-    lam_tab = pd.DataFrame(lam_rows)
+    v_mf = scores(mf.predict, val_users, val_cand)
+    vp_mf = mf.predict(val[0], val[1])
+
+    def choose_lambda(content, label):
+        v_c, vp_c = scores(content.predict, val_users, val_cand), content.predict(val[0], val[1])
+        rows = []
+        for lm in LAMBDAS:
+            met, _ = ranking_metrics(lm * v_mf + (1 - lm) * v_c)
+            rows.append({"lambda": lm, "val_rmse": rmse(val[2], lm * vp_mf + (1 - lm) * vp_c), **met})
+        tab = pd.DataFrame(rows)
+        best = float(tab.loc[tab["NDCG@10"].idxmax(), "lambda"])
+        print(f"   {label}: 선택 λ = {best}  (λ=1: MF만, λ=0: 콘텐츠 기반만)")
+        return tab, best
+
+    lam_tab, lam = choose_lambda(cb, "Hybrid (MF + Content)")
     print(lam_tab.round(4).to_string(index=False))
-    lam = float(lam_tab.loc[lam_tab["NDCG@10"].idxmax(), "lambda"])
-    print(f"   선택 λ = {lam}  (λ=1: MF만, λ=0: 콘텐츠 기반만)")
     save_table(lam_tab, "06_hybrid_lambda")
+    lam_tab_s, lam_s = choose_lambda(cb_cold, "Hybrid (MF + Content 까다로움)")
+    save_table(lam_tab_s, "06_hybrid_lambda_strict")
 
     fig, ax = plt.subplots(1, 2, figsize=(11, 3.8))
     ax[0].plot(lam_tab["lambda"], lam_tab.val_rmse, marker="o")
@@ -161,6 +257,9 @@ def main():
     hybrid = lambda a, b: lam * mf.predict(a, b) + (1 - lam) * cb.predict(a, b)
     rating_models[f"Hybrid(λ={lam})"] = hybrid
     rank_models[f"Hybrid(λ={lam})"] = hybrid
+    hybrid_s = lambda a, b: lam_s * mf.predict(a, b) + (1 - lam_s) * cb_cold.predict(a, b)
+    rating_models[f"Hybrid(까다로움, λ={lam_s})"] = hybrid_s
+    rank_models[f"Hybrid(까다로움, λ={lam_s})"] = hybrid_s
 
     # 11단계(Kaggle 호텔 매칭)가 쓰는 호텔 단위 점수: 신규 사용자 예측은 사용자 항이 0
     np.savez(WORK_DIR / "hotel_scores.npz", base_mu=base.mu, base_bi=base.bi, mf_mu=mf.mu, mf_bi=mf.bi,
@@ -199,7 +298,7 @@ def main():
     ax[0].barh(rank_tab.model, rank_tab["NDCG@10"], color="#4c72b0")
     ax[0].invert_yaxis()
     ax[0].set_title("test NDCG@10")
-    piv = act.pivot(index="train_reviews", columns="model", values="HR@10")
+    piv = act.pivot(index="train_reviews", columns="model", values="HR@10")[ACTIVITY_PLOT]   # 주요 모델만 그림
     piv = piv.loc[sorted(piv.index, key=lambda s: float(s[1:].split(",")[0]))]
     piv.plot(ax=ax[1], marker="o")
     ax[1].set_title("사용자 train 리뷰 수별 test HR@10")

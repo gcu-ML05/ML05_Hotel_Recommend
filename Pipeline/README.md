@@ -49,7 +49,7 @@ data/processing/kaggle/    kaggle_test.csv, hotel_meta_kaggle.csv
 
 ## 3. 실행
 
-`Pipeline/` 폴더에서 번호 순서대로 실행합니다. 전체 약 25분입니다.
+`Pipeline/` 폴더에서 번호 순서대로 실행합니다. 전체 약 30분입니다.
 
 ```bash
 cd Pipeline
@@ -58,7 +58,7 @@ python 02_user_aspect_weights.py      # 약 2분
 python 03_hotel_features.py           # 약 4분
 python 04_persona_deviation.py        # 약 1분
 python 05_persona_tuning.py           # 약 0.5분
-python 06_train_evaluate.py           # 약 6분
+python 06_train_evaluate.py           # 약 10분
 python 07_tune_itemknn.py             # 선택, 약 9분
 python 08_kaggle_generalization.py    # 약 0.5분
 python 09_lexicon_audit.py            # 약 1분
@@ -79,7 +79,7 @@ python 11_kaggle_hotel_matching.py    # 약 0.1분
 | `03_hotel_features.py` | 호텔 aspect 평균, 호텔 TF-IDF | 01 | `03_hotel_top_terms.csv` |
 | `04_persona_deviation.py` | 편차 기반 관대함·까다로움, 페르소나 | 01, 02, 03 | `04_*.csv`, `figures/04_*.png` |
 | `05_persona_tuning.py` | 04의 축소 강도·관대함 계수·K 선택, test 평가 | 01~04 | `05_*.csv`, `figures/05_*.png` |
-| `06_train_evaluate.py` | 추천 모델 학습, 평점 예측·Top-N 평가, 하이브리드 λ 선택 | 01, 02, 03 | `06_*.csv`, `figures/06_*.png` |
+| `06_train_evaluate.py` | 추천 모델 학습, 평점 예측·Top-N 평가, 편차 기반 선호 연결, 하이브리드 λ 선택 | 01, 02, 03, 05 | `06_*.csv`, `figures/06_*.png` |
 | `07_tune_itemknn.py` | Item-kNN 설정 비교 (선택) | 01 | `07_itemknn_tuning.csv` |
 | `08_kaggle_generalization.py` | Kaggle 리뷰의 aspect 언급 분석, 키워드 사전(`LEXICON`) | 02 | `08_*.csv`, `figures/08_*.png` |
 | `09_lexicon_audit.py` | 키워드별 빈도·동시 언급·민감도 점검 | 08의 사전 | `09_*.csv` |
@@ -111,12 +111,16 @@ train(세부 평점 완전)과 partial을 합친 전체 리뷰에서 **사용자
 
 | 모델 | 방법 |
 | --- | --- |
-| Popularity / PersonaPopularity | 리뷰 수가 많은 호텔 / 같은 페르소나가 높게 평가한 호텔 (기준선) |
+| Popularity | 리뷰 수가 많은 호텔 (기준선) |
+| PersonaPopularity (회귀 / 편차) | 같은 페르소나(02의 K=3 / 05의 K=2)가 4점 이상 준 호텔 (제안서의 군집 기준선) |
 | Baseline | μ + b_u + b_i |
 | ItemKNN | 평점 예측: 기준 예측(μ+b_u+b_i) + 이웃 호텔 잔차의 가중 평균 (KNNBaseline)<br>Top-N: 사용자가 다녀간 호텔들과의 공동 방문 유사도 합 |
 | MF | μ + b_u + b_i + p_u·q_i, MSE + L2, 미니배치 SGD, val 기준 조기 종료 |
-| Content | aspect 효용 (사용자 가중치 × 호텔 aspect 평균) + γ × TF-IDF 코사인 유사도 |
-| Hybrid | λ · MF + (1 − λ) · Content, λ는 val NDCG@10으로 선택 |
+| Content | aspect 효용 (02의 사용자 가중치 × 호텔 aspect 평균) + γ × TF-IDF 코사인 유사도 |
+| Content (까다로움) | 04·05의 편차 기반 선호를 연결한 콘텐츠 기반. aspect 가중치를 사용자가 까다롭게 보는 aspect 쪽으로 기울이고(w_k ∝ 전역 가중치 × exp(τ · 까다로움)), 절편에 κ × 관대함을 더합니다. 까다로움은 개인 / 페르소나 평균 / 이력이 적은 사용자(train 5건 미만)만 페르소나 세 가지로 비교합니다 |
+| Hybrid / Hybrid (까다로움) | λ · MF + (1 − λ) · Content (또는 Content(까다로움, 이력 적으면 페르소나)), λ는 val NDCG@10으로 선택 |
+
+τ(까다로움 반영 강도)는 val NDCG@10, κ(관대함 계수)는 val 평점 잔차의 최소제곱으로 고릅니다 (`06_strictness_tau.csv`).
 
 평가 지표:
 - **평점 예측**: 모든 사용자의 test 리뷰에 대한 RMSE, MAE
@@ -170,6 +174,17 @@ Kaggle 리뷰 1건을 신규 사용자 1명으로 봅니다. aspect별 키워드
 | + 페르소나 (K=2) | 0.878 |
 | **+ 개인 까다로움 (M=30)** | **0.877** |
 
+**편차 기반 선호의 추천 연결 (06, test, τ=160, κ=0.51)**
+
+| 모델 | 평점 RMSE | 무작위 HR@5 / NDCG@10 | 같은 도시 NDCG@10 |
+| --- | --- | --- | --- |
+| Content (aspect + text) | 0.952 | 0.070 / 0.065 | 0.143 |
+| Content (까다로움, 개인) | 0.945 | 0.076 / 0.067 | 0.142 |
+| **Content (까다로움, 페르소나)** | **0.931** | 0.077 / 0.068 | **0.143** |
+| Content (까다로움, 이력 적으면 페르소나) | 0.939 | **0.078 / 0.068** | 0.142 |
+| PersonaPopularity (회귀, K=3) | – | 0.215 / 0.172 | 0.251 |
+| PersonaPopularity (편차, K=2) | – | 0.216 / 0.172 | 0.251 |
+
 **Kaggle 공통 호텔 505개 (11, 리뷰 203,215건): 신규 사용자 예측 vs 실제 점수**
 
 | 모델 | 리뷰 RMSE | 호텔 평균 점수와 상관 |
@@ -184,6 +199,8 @@ Kaggle 리뷰 1건을 신규 사용자 1명으로 봅니다. aspect별 키워드
 - ItemKNN은 이력이 많은 사용자일수록 좋아지고(HR@10: 리뷰 3~4건 0.299 → 20건 이상 0.472), 콘텐츠 기반은 이력이 적은 사용자에서 상대적으로 낫습니다.
 - **회귀 기반 사용자 가중치(02)는 전역 가중치보다 낫지 않았고**, 페르소나 간 차이도 거의 없었습니다(중요도 비율 차이 약 0.003).
 - **편차 기반(04·05)에서는 관대함이 뚜렷한 신호입니다** (0.905 → 0.878). aspect별 개인 까다로움도 있지만 효과는 작고(−0.001), 페르소나는 예측에 거의 기여하지 않습니다(−0.0002). 대신 "서비스 깐깐형 (위치엔 관대)" 35%, "수면 깐깐형 (서비스엔 관대)" 65%처럼 해석할 수 있는 유형이 나옵니다.
+- **편차 기반 선호를 콘텐츠 기반 추천에 연결하면 소폭 좋아집니다.** 평점 RMSE는 0.952 → 0.931(주로 관대함 보정), 무작위 후보 HR@5는 0.070 → 0.078(+11%), NDCG@10은 0.065 → 0.068로 올랐습니다. 같은 도시 후보에서는 차이가 없습니다. 개인 까다로움보다 페르소나 평균 까다로움이 RMSE가 낮아, 개인 값에는 잡음이 많고 페르소나로 묶으면 안정적이라는 뜻입니다. 이력이 20건 이상인 사용자에서 HR@10이 0.110 → 0.119로 가장 크게 올랐습니다. 다만 MF·Baseline(0.907~0.909)보다는 여전히 RMSE가 높고, 하이브리드는 까다로움 버전에서도 λ=0이 선택됩니다.
+- PersonaPopularity는 회귀 기반·편차 기반 모두 인기도(0.328)보다 약간 낮습니다. 페르소나가 2~3개뿐이라 군집별 인기 호텔이 전체 인기 호텔과 거의 같습니다.
 - **aspect 가중치는 플랫폼을 넘어 일반화됩니다.** HotelRec 전역 가중치로 매긴 Booking.com 호텔 점수는 동일 가중보다 실제 점수와 상관이 높습니다(0.274 → 0.301).
 - Booking.com 리뷰에서도 여행 유형별 선호 차이가 보입니다. 가족 여행객은 location을, 출장객은 rooms·sleep_quality·value를 더 언급합니다. 키워드 사전을 수정해도 여행 유형별 최다 언급 aspect는 8개 그룹 중 7개, 최소 언급 aspect는 8개 모두 유지됩니다(10).
 - 여행 유형과 페르소나의 연관은 회귀 기반·편차 기반 모두 약합니다(Cramér's V 0.03~0.05).
@@ -192,7 +209,7 @@ Kaggle 리뷰 1건을 신규 사용자 1명으로 봅니다. aspect별 키워드
 ## 7. 한계와 남은 과제
 
 - **하이브리드 결합 방식**: 지금 결합(MF + Content)은 순위에서 효과가 없습니다. CF 쪽을 ItemKNN으로 바꾸거나 인기도를 함께 넣는 방안을 검토해야 합니다.
-- **페르소나 활용**: 편차 기반 페르소나(05의 `user_personas_dev_tuned.csv`)는 아직 06의 PersonaPopularity·콘텐츠 기반에 연결되지 않았습니다. 예측 기여가 작아 효과는 크지 않을 것으로 보입니다.
+- **페르소나 활용**: 편차 기반 선호는 06의 콘텐츠 기반·하이브리드·PersonaPopularity에 연결되어 있지만 개선 폭이 작습니다. τ=160은 사용자가 가장 까다롭게 보는 aspect 하나에 가중치의 약 89%를 몰아주는 강한 설정이라, 해석할 때 "가장 깐깐한 aspect 위주로 호텔을 고른다"는 뜻으로 읽어야 합니다. 11의 Kaggle 신규 사용자 예측에는 사용자 이력이 없어 연결하지 않았습니다.
 - **평가 범위**: 같은 도시 평가는 대도시 사용자(표본의 25%)만 포함합니다. Kaggle 매칭은 6개 유럽 도시 505개 호텔에 한정됩니다.
 - **수작업 규칙**: aspect 키워드 사전(08, 수정안은 10)과 호텔명 매칭 규칙(11)은 직접 정한 것입니다. 매칭 목록은 `outputs/11_matched_hotels.csv`에서 확인할 수 있습니다.
 - **편차의 기준**: 04의 호텔 평균에는 사용자 자신의 train 리뷰도 포함되어, 리뷰가 적은 호텔에서는 편차가 약간 작게 잡힙니다.
