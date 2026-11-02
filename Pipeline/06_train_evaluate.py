@@ -18,7 +18,13 @@
 
 Item-kNN은 개선판(KNNBaseline + 분모 축소 + 공동 방문 순위 점수)과 기존판(adjusted cosine)을 함께 보고한다.
 
-하이브리드 (제안서 ④):  score = λ · MF + (1 - λ) · ContentBased,  λ는 val NDCG@10이 가장 높은 값
+하이브리드 (제안서 ④: CF 점수와 콘텐츠 점수의 가중합). 목적이 다른 두 가지로 나눈다.
+    Hybrid-평점 (MF+Content):     λ · MF + (1 - λ) · Content(까다로움, 이력 적으면 페르소나)
+                                  둘 다 평점 척도라 그대로 합산, λ는 val RMSE가 가장 낮은 값
+    Hybrid-순위 (ItemKNN+Content): λ · z(ItemKNN 공동 방문 점수) + (1 - λ) · z(Content(까다로움, 이력 적으면 페르소나))
+                                  z: 같은 사용자의 후보끼리 표준화 (두 점수의 척도가 달라 합산 전에 맞춤)
+                                  λ는 val NDCG@10이 가장 높은 값. 순위에서 가장 강한 CF인 ItemKNN을 쓴다.
+    (MF + Content를 val NDCG@10으로 고르면 λ=0이 되어 콘텐츠 기반과 같아졌기 때문에 이렇게 나눴다.)
 
 편차 기반 선호 연결 (04·05단계의 user_personas_dev_tuned.csv)
     PersonaPopularity(편차): 05의 페르소나(까다로움 유형)가 같은 사용자들이 4점 이상 준 호텔을 추천
@@ -27,8 +33,7 @@ Item-kNN은 개선판(KNNBaseline + 분모 축소 + 공동 방문 순위 점수)
         절편 = w_g,0 + κ · 관대함_u   (관대함은 사용자마다 상수라 순위는 바꾸지 않고 평점만 보정)
         τ는 val NDCG@10, κ는 val 평점 잔차의 최소제곱으로 고른다.
         까다로움은 세 가지로 비교: 개인 / 페르소나 평균 / 이력이 적은 사용자(train 리뷰 COLD_MAX건 미만)만 페르소나
-        (마지막이 역할표의 "콜드스타트 시 페르소나 가중치로 대체")
-    Hybrid(까다로움): λ · MF + (1 - λ) · Content(까다로움, 이력 적으면 페르소나), λ는 val NDCG@10
+        (마지막이 역할표의 "콜드스타트 시 페르소나 가중치로 대체"이며 두 하이브리드의 콘텐츠 쪽으로 쓴다)
 
 출력: Pipeline/outputs/06_*.csv, figures/06_*.png
 """
@@ -49,7 +54,8 @@ ACTIVITY_BINS = [3, 5, 10, 20, np.inf]
 # (가장 까다로운 aspect의 가중치 비율 중앙값: τ=80 → 0.66, 160 → 0.89, 320 → 0.99)
 TAUS = [0, 5, 10, 20, 40, 80, 160, 320]
 COLD_MAX = 5                        # train 리뷰가 이보다 적은 사용자는 개인 대신 페르소나 까다로움 사용
-ACTIVITY_PLOT = ["Popularity", "ItemKNN", "MF", "Content(aspect+text)", "Content(까다로움, 이력 적으면 페르소나)"]
+HYB_RATING, HYB_RANK = "Hybrid-평점 (MF+Content)", "Hybrid-순위 (ItemKNN+Content)"
+ACTIVITY_PLOT = ["Popularity", "ItemKNN", "MF", "Content(까다로움, 이력 적으면 페르소나)", HYB_RANK]
 
 
 def arrays(df):
@@ -65,6 +71,14 @@ def strict_weights(w_g, S, tau, leniency=None, kappa=0.0):
     w *= w_g[1:].sum() / w.sum(1, keepdims=True)
     w0 = w_g[0] + (kappa * leniency if leniency is not None else 0.0)
     return np.column_stack([np.broadcast_to(w0, len(S)), w])
+
+
+def zscore_by_user(u, s):
+    """같은 사용자의 (후보) 점수끼리 평균 0, 표준편차 1로 표준화. 점수가 모두 같은 사용자는 0."""
+    n = np.maximum(np.bincount(u), 1)
+    mean = np.bincount(u, s) / n
+    sd = np.sqrt(np.maximum(np.bincount(u, s * s) / n - mean ** 2, 0))
+    return np.divide(s - mean[u], sd[u], out=np.zeros_like(s, dtype=float), where=sd[u] > 1e-12)
 
 
 def cache_pairs(f):
@@ -224,46 +238,51 @@ def main():
     cb_cold = cbs["Content(까다로움, 이력 적으면 페르소나)"]
 
     # ------------------------------------------------------------ 하이브리드 λ 선택 (val)
-    v_mf = scores(mf.predict, val_users, val_cand)
-    vp_mf = mf.predict(val[0], val[1])
+    # 두 하이브리드 모두 콘텐츠 쪽은 Content(까다로움, 이력 적으면 페르소나)를 쓴다.
+    vp_mf, vp_c = mf.predict(val[0], val[1]), cb_cold.predict(val[0], val[1])
+    v_mf, v_c = scores(mf.predict, val_users, val_cand), scores(cb_cold.predict, val_users, val_cand)
+    v_knn = scores(knn.rank_score, val_users, val_cand)
+    zc = lambda m: zscore_by_user(np.repeat(val_users, val_cand.shape[1]), m.ravel()).reshape(m.shape)
+    z_knn, z_c = zc(v_knn), zc(v_c)
 
-    def choose_lambda(content, label):
-        v_c, vp_c = scores(content.predict, val_users, val_cand), content.predict(val[0], val[1])
-        rows = []
-        for lm in LAMBDAS:
-            met, _ = ranking_metrics(lm * v_mf + (1 - lm) * v_c)
-            rows.append({"lambda": lm, "val_rmse": rmse(val[2], lm * vp_mf + (1 - lm) * vp_c), **met})
-        tab = pd.DataFrame(rows)
-        best = float(tab.loc[tab["NDCG@10"].idxmax(), "lambda"])
-        print(f"   {label}: 선택 λ = {best}  (λ=1: MF만, λ=0: 콘텐츠 기반만)")
-        return tab, best
-
-    lam_tab, lam = choose_lambda(cb, "Hybrid (MF + Content)")
+    rows = []
+    for lm in LAMBDAS:
+        # 평점 하이브리드는 RMSE로 고르지만, 순위 지표도 함께 기록해 둔다
+        met_r, _ = ranking_metrics(lm * v_mf + (1 - lm) * v_c)
+        met_k, _ = ranking_metrics(lm * z_knn + (1 - lm) * z_c)
+        rows.append({"lambda": lm, "rating_val_RMSE": rmse(val[2], lm * vp_mf + (1 - lm) * vp_c),
+                     "rating_val_NDCG@10": met_r["NDCG@10"],
+                     "rank_val_HR@10": met_k["HR@10"], "rank_val_NDCG@10": met_k["NDCG@10"]})
+    lam_tab = pd.DataFrame(rows)
+    lam_r = float(lam_tab.loc[lam_tab.rating_val_RMSE.idxmin(), "lambda"])
+    lam_k = float(lam_tab.loc[lam_tab["rank_val_NDCG@10"].idxmax(), "lambda"])
+    lam_tab["selected_rating"] = lam_tab["lambda"] == lam_r
+    lam_tab["selected_rank"] = lam_tab["lambda"] == lam_k
     print(lam_tab.round(4).to_string(index=False))
+    print(f"   {HYB_RATING}: λ = {lam_r} (MF 비중, val RMSE 최소)")
+    print(f"   {HYB_RANK}: λ = {lam_k} (ItemKNN 비중, val NDCG@10 최대)")
     save_table(lam_tab, "06_hybrid_lambda")
-    lam_tab_s, lam_s = choose_lambda(cb_cold, "Hybrid (MF + Content 까다로움)")
-    save_table(lam_tab_s, "06_hybrid_lambda_strict")
 
     fig, ax = plt.subplots(1, 2, figsize=(11, 3.8))
-    ax[0].plot(lam_tab["lambda"], lam_tab.val_rmse, marker="o")
-    ax[0].set_title("val RMSE")
-    ax[1].plot(lam_tab["lambda"], lam_tab["NDCG@10"], marker="o", color="C1")
-    ax[1].set_title("val NDCG@10")
-    for a in ax:
-        a.axvline(lam, ls="--", color="gray")
-        a.set_xlabel("λ (MF 비중)")
+    ax[0].plot(lam_tab["lambda"], lam_tab.rating_val_RMSE, marker="o")
+    ax[0].axvline(lam_r, ls="--", color="gray")
+    ax[0].set_title(f"{HYB_RATING}: val RMSE")
+    ax[0].set_xlabel("λ (MF 비중)")
+    ax[1].plot(lam_tab["lambda"], lam_tab["rank_val_NDCG@10"], marker="o", color="C1")
+    ax[1].axvline(lam_k, ls="--", color="gray")
+    ax[1].set_title(f"{HYB_RANK}: val NDCG@10")
+    ax[1].set_xlabel("λ (ItemKNN 비중)")
     save_fig(plt, "06_hybrid_lambda")
 
-    hybrid = lambda a, b: lam * mf.predict(a, b) + (1 - lam) * cb.predict(a, b)
-    rating_models[f"Hybrid(λ={lam})"] = hybrid
-    rank_models[f"Hybrid(λ={lam})"] = hybrid
-    hybrid_s = lambda a, b: lam_s * mf.predict(a, b) + (1 - lam_s) * cb_cold.predict(a, b)
-    rating_models[f"Hybrid(까다로움, λ={lam_s})"] = hybrid_s
-    rank_models[f"Hybrid(까다로움, λ={lam_s})"] = hybrid_s
+    hyb_rating = lambda a, b: lam_r * mf.predict(a, b) + (1 - lam_r) * cb_cold.predict(a, b)
+    hyb_rank = lambda a, b: (lam_k * zscore_by_user(a, knn.rank_score(a, b))
+                             + (1 - lam_k) * zscore_by_user(a, cb_cold.predict(a, b)))
+    rating_models[HYB_RATING] = rank_models[HYB_RATING] = hyb_rating
+    rank_models[HYB_RANK] = hyb_rank                # 점수가 표준화 값이라 순위 평가에만 사용
 
-    # 11단계(Kaggle 호텔 매칭)가 쓰는 호텔 단위 점수: 신규 사용자 예측은 사용자 항이 0
+    # 11단계(Kaggle 호텔 매칭)가 쓰는 호텔 단위 점수: 신규 사용자 예측은 사용자 항이 0 (평점 하이브리드의 λ 사용)
     np.savez(WORK_DIR / "hotel_scores.npz", base_mu=base.mu, base_bi=base.bi, mf_mu=mf.mu, mf_bi=mf.bi,
-             hybrid_lambda=lam)
+             hybrid_lambda=lam_r)
 
     # ------------------------------------------------------------ test 평가
     print("[4/4] test 평가")
