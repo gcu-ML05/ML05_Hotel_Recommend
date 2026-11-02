@@ -1,0 +1,9 @@
+﻿,column,top_orig,top_rev,top_same,bottom_orig,bottom_rev,bottom_same,max_abs_diff_pp
+Couple,traveler_type,rooms,rooms,True,location,location,True,0.299
+Family with older children,traveler_type,location,location,True,rooms,rooms,True,0.425
+Family with young children,traveler_type,location,location,True,rooms,rooms,True,0.179
+Group,traveler_type,service,service,True,rooms,rooms,True,0.237
+Solo traveler,traveler_type,sleep_quality,rooms,False,service,service,True,0.613
+Travelers with friends,traveler_type,location,location,True,rooms,rooms,True,1.516
+Business trip,trip_type,rooms,rooms,True,service,service,True,0.614
+Leisure trip,trip_type,location,location,True,rooms,rooms,True,0.119

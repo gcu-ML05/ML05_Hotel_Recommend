@@ -1,0 +1,26 @@
+﻿aspect,action,keyword
+rooms,remove,bed
+rooms,remove,beds
+cleanliness,remove,smell
+value,remove,cheap
+service,add,waiter
+service,add,waitress
+service,add,manager
+service,add,housekeeping
+cleanliness,add,hair
+cleanliness,add,filthy
+cleanliness,add,unclean
+value,add,overcharged
+value,add,affordable
+value,add,reasonable
+value,add,bargain
+location,add,restaurants
+location,add,shops
+location,add,attractions
+location,add,close to
+sleep_quality,add,comfortable bed
+sleep_quality,add,uncomfortable
+sleep_quality,add,thin walls
+sleep_quality,add,traffic
+sleep_quality,add,bedding
+sleep_quality,add,snoring

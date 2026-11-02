@@ -1,0 +1,9 @@
+﻿,service,cleanliness,value,rooms,location,sleep_quality,column
+Couple,0.138,-0.237,0.025,0.37,-0.438,0.142,traveler_type
+Family with older children,0.817,0.26,-0.541,-2.608,2.828,-0.756,traveler_type
+Family with young children,0.797,0.271,-0.253,-1.457,1.523,-0.881,traveler_type
+Group,1.169,0.42,0.063,-1.049,0.273,-0.875,traveler_type
+Solo traveler,-1.592,0.004,0.176,1.35,-0.856,0.919,traveler_type
+Travelers with friends,-4.3,4.033,0.232,-5.83,7.868,-2.002,traveler_type
+Business trip,-1.955,-0.129,0.651,1.824,-1.266,0.875,trip_type
+Leisure trip,0.325,-0.002,-0.127,-0.4,0.384,-0.181,trip_type
