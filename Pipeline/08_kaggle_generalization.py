@@ -1,5 +1,5 @@
 """
-5단계: Kaggle(Booking.com) 데이터로 일반화 검증
+8단계: Kaggle(Booking.com) 데이터로 일반화 검증
 
 Kaggle 데이터에는 사용자 ID와 세부 평점이 없으므로 제안서 2절대로 리뷰 1건을 신규 사용자 1명으로 보고,
 리뷰 본문에서 언급된 aspect로 선호를 추정한다.
@@ -20,7 +20,7 @@ Kaggle 데이터에는 사용자 ID와 세부 평점이 없으므로 제안서 2
     호텔 점수 = Σ_k 가중치_k x 평판_k 가 리뷰어의 실제 점수와 얼마나 상관있는지 (스피어만 순위상관)
     가중치: 동일 가중 / HotelRec 전역 가중치 / 리뷰에 배정된 페르소나 가중치
 
-출력: Pipeline/outputs/05_*.csv, figures/05_*.png
+출력: Pipeline/outputs/08_*.csv, figures/08_*.png
 """
 import re
 
@@ -79,7 +79,7 @@ def main():
         tabs.append(dev.rename_axis("group").reset_index().assign(column=col))
     dev_tab = pd.concat(tabs, ignore_index=True)
     print(dev_tab.round(2).to_string(index=False))
-    save_table(dev_tab.round(3), "05_aspect_mention_by_trip_type")
+    save_table(dev_tab.round(3), "08_aspect_mention_by_trip_type")
 
     fig, ax = plt.subplots(figsize=(8, 4.5))
     D = dev_tab.set_index("group")[ASPECTS]
@@ -92,7 +92,7 @@ def main():
             ax.text(b, a, f"{D.iat[a, b]:+.1f}", ha="center", va="center", fontsize=8)
     ax.set_title("여행 유형별 aspect 언급 비율 - 전체 평균 (%p)")
     plt.colorbar(im)
-    save_fig(plt, "05_aspect_mention_by_trip_type")
+    save_fig(plt, "08_aspect_mention_by_trip_type")
 
     # (3) 페르소나 대응
     cent = pd.read_csv(WORK_DIR / "persona_centroids.csv")
@@ -111,13 +111,13 @@ def main():
     cramer_v = np.sqrt(chi2 / (ct.to_numpy().sum() * (min(ct.shape) - 1)))   # 0~1, 연관 강도
     print((ct.div(ct.sum(axis=1), axis=0) * 100).round(1).to_string())
     print(f"카이제곱 {chi2:.1f}, 자유도 {dof}, p={p:.3g}, Cramér's V = {cramer_v:.3f}")
-    save_table((ct.div(ct.sum(axis=1), axis=0) * 100).round(2), "05_traveler_type_x_persona", index=True)
+    save_table((ct.div(ct.sum(axis=1), axis=0) * 100).round(2), "08_traveler_type_x_persona", index=True)
 
     # 여행자 유형 전체의 언급 프로필이 어느 페르소나와 가장 비슷한지
     G = S.groupby(kk.traveler_type).mean().to_numpy() - overall
     sim = pd.DataFrame(unit(G) @ unit(C).T, index=S.groupby(kk.traveler_type).mean().index, columns=cent["name"])
     print(sim.round(3).to_string())
-    save_table(sim.round(4), "05_traveler_type_persona_similarity", index=True)
+    save_table(sim.round(4), "08_traveler_type_persona_similarity", index=True)
 
     # (4) 콘텐츠 기반 점수의 일반화: 호텔 aspect 평판(leave-one-out)과 리뷰어 점수의 순위상관
     s_r = POS - NEG                                                   # 리뷰별 aspect 평판 (-1, 0, 1)
@@ -138,7 +138,7 @@ def main():
         rows.append(row)
     corr = pd.DataFrame(rows)
     print(corr.round(4).to_string(index=False))
-    save_table(corr.round(4), "05_content_score_generalization")
+    save_table(corr.round(4), "08_content_score_generalization")
 
 
 if __name__ == "__main__":

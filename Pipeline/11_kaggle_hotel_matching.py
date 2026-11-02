@@ -1,5 +1,5 @@
 """
-6단계: HotelRec <-> Kaggle 호텔 매칭 평가 (신규 사용자 일반화)
+11단계: HotelRec <-> Kaggle 호텔 매칭 평가 (신규 사용자 일반화)
 
 Kaggle(Booking.com) 리뷰어는 HotelRec에 이력이 없는 신규 사용자이다. 두 데이터에 모두 있는 호텔에 대해
 HotelRec으로 학습한 모델이 신규 사용자에게 내놓는 예측 점수가 Booking.com의 실제 점수와 얼마나 맞는지 본다.
@@ -15,15 +15,15 @@ HotelRec으로 학습한 모델이 신규 사용자에게 내놓는 예측 점�
     Baseline            μ + b_i
     MF                  μ + b_i                 (잠재 요인 p_u가 없으므로 호텔 편향까지만)
     Content(aspect)     w0 + Σ_k w_k · a_hk      (전역 aspect 가중치 x 호텔 aspect 평균)
-    Hybrid              λ · MF + (1-λ) · Content (λ는 04단계에서 선택한 값)
+    Hybrid              λ · MF + (1-λ) · Content (λ는 06단계에서 선택한 값)
 
 (3) 평가
     리뷰 단위: Kaggle 리뷰 점수(rating = 10점/2)와의 RMSE, MAE, 스피어만 순위상관
     호텔 단위: 호텔별 Kaggle 평균 점수와의 피어슨/스피어만 상관 (리뷰어 개인차를 평균으로 줄인 비교)
     여행자 유형별 리뷰 단위 스피어만 상관
 
-입력: data/pipeline/hotel_scores.npz (04단계 출력), hotel_aspects.npy, global_weights.npy
-출력: Pipeline/outputs/06_*.csv, figures/06_*.png
+입력: data/pipeline/hotel_scores.npz (06단계 출력), hotel_aspects.npy, global_weights.npy
+출력: Pipeline/outputs/11_*.csv, figures/11_*.png
 """
 import difflib
 import re
@@ -91,7 +91,7 @@ def main():
                  suffixes=("_kaggle", "_hotelrec"))
     ex = ex[["kaggle_hotel_id", "hotel_name_kaggle", "city", "hotelrec_hotel_id", "hotel_name_hotelrec",
              "location", "match", "ratio"]]
-    save_table(ex.sort_values(["city", "hotel_name_kaggle"]), "06_matched_hotels")
+    save_table(ex.sort_values(["city", "hotel_name_kaggle"]), "11_matched_hotels")
     print("유사 매칭 예시 (검토용):")
     print(ex[ex.match == "fuzzy"].head(10)[["hotel_name_kaggle", "hotel_name_hotelrec", "ratio"]]
           .round(3).to_string(index=False))
@@ -134,10 +134,10 @@ def main():
     res = pd.DataFrame(rows)
     print(f"평균 점수: Kaggle {kr.rating.mean():.3f} / HotelRec 학습 μ {float(s['base_mu']):.3f}")
     print(res.round(4).to_string(index=False))
-    save_table(res, "06_kaggle_matched_prediction")
+    save_table(res, "11_kaggle_matched_prediction")
     by_type = pd.DataFrame(type_rows)
     print(by_type.round(4).to_string(index=False))
-    save_table(by_type, "06_kaggle_matched_by_traveler_type")
+    save_table(by_type, "11_kaggle_matched_by_traveler_type")
 
     fig, ax = plt.subplots(1, 2, figsize=(11, 4.2))
     for a, name in zip(ax, ["MF(μ+b_i)", f"Hybrid(λ={lam})"]):
@@ -147,7 +147,7 @@ def main():
         a.set_ylabel("Kaggle 호텔 평균 점수 (5점)")
         a.set_title(f"r = {pearsonr(ph, hotel_mean).statistic:.3f}")
     plt.suptitle(f"매칭 호텔 {len(hotel_mean):,}개: HotelRec 신규 사용자 예측 vs Booking.com 실제")
-    save_fig(plt, "06_kaggle_matched_prediction")
+    save_fig(plt, "11_kaggle_matched_prediction")
 
 
 if __name__ == "__main__":

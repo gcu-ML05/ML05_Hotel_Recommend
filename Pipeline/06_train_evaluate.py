@@ -1,5 +1,5 @@
 """
-4단계: 모델 학습과 평가 (HotelRec)
+6단계: 모델 학습과 평가 (HotelRec)
 
 학습: train 분할로 모든 모델을 학습한다.
 선택: val 분할로 MF 조기 종료, 콘텐츠 기반의 γ, 하이브리드 가중치 λ를 고른다.
@@ -20,7 +20,7 @@ Item-kNN은 개선판(KNNBaseline + 분모 축소 + 공동 방문 순위 점수)
 
 하이브리드 (제안서 ④):  score = λ · MF + (1 - λ) · ContentBased,  λ는 val NDCG@10이 가장 높은 값
 
-출력: Pipeline/outputs/04_*.csv, figures/04_*.png
+출력: Pipeline/outputs/06_*.csv, figures/06_*.png
 """
 import argparse
 import time
@@ -47,7 +47,7 @@ def main():
     ap.add_argument("--n-val-users", type=int, default=5_000, help="λ 선택에 쓰는 val 사용자 수")
     ap.add_argument("--n-neg", type=int, default=99, help="정답 1개와 함께 섞는 후보 호텔 수")
     ap.add_argument("--n-city-neg", type=int, default=49, help="같은 도시 평가에서 정답과 섞는 후보 호텔 수")
-    ap.add_argument("--knn-k", type=int, default=2000, help="호텔별 이웃 수 (04a_tune_itemknn.py로 선택)")
+    ap.add_argument("--knn-k", type=int, default=2000, help="호텔별 이웃 수 (07_tune_itemknn.py로 선택)")
     ap.add_argument("--knn-shrink", type=float, default=100.0)
     ap.add_argument("--knn-damp", type=float, default=0.03)
     ap.add_argument("--mf-k", type=int, default=32)
@@ -94,7 +94,7 @@ def main():
     cb_g = ContentBased(np.tile(w_g, (n_users, 1)), A, T)
 
     hist = pd.DataFrame(mf.history)
-    save_table(hist, "04_mf_history")
+    save_table(hist, "06_mf_history")
     plt.figure(figsize=(6, 4))
     plt.plot(hist.epoch, hist.train_rmse, marker="o", label="train")
     plt.plot(hist.epoch, hist.val_rmse, marker="o", label="val")
@@ -103,7 +103,7 @@ def main():
     plt.ylabel("RMSE")
     plt.title("MF 학습 곡선 (점선: 선택된 epoch)")
     plt.legend()
-    save_fig(plt, "04_mf_learning_curve")
+    save_fig(plt, "06_mf_learning_curve")
 
     rating_models = {
         "GlobalMean": lambda a, b: np.full(len(a), r.mean()),
@@ -146,7 +146,7 @@ def main():
     print(lam_tab.round(4).to_string(index=False))
     lam = float(lam_tab.loc[lam_tab["NDCG@10"].idxmax(), "lambda"])
     print(f"   선택 λ = {lam}  (λ=1: MF만, λ=0: 콘텐츠 기반만)")
-    save_table(lam_tab, "04_hybrid_lambda")
+    save_table(lam_tab, "06_hybrid_lambda")
 
     fig, ax = plt.subplots(1, 2, figsize=(11, 3.8))
     ax[0].plot(lam_tab["lambda"], lam_tab.val_rmse, marker="o")
@@ -156,13 +156,13 @@ def main():
     for a in ax:
         a.axvline(lam, ls="--", color="gray")
         a.set_xlabel("λ (MF 비중)")
-    save_fig(plt, "04_hybrid_lambda")
+    save_fig(plt, "06_hybrid_lambda")
 
     hybrid = lambda a, b: lam * mf.predict(a, b) + (1 - lam) * cb.predict(a, b)
     rating_models[f"Hybrid(λ={lam})"] = hybrid
     rank_models[f"Hybrid(λ={lam})"] = hybrid
 
-    # 06단계(Kaggle 호텔 매칭)가 쓰는 호텔 단위 점수: 신규 사용자 예측은 사용자 항이 0
+    # 11단계(Kaggle 호텔 매칭)가 쓰는 호텔 단위 점수: 신규 사용자 예측은 사용자 항이 0
     np.savez(WORK_DIR / "hotel_scores.npz", base_mu=base.mu, base_bi=base.bi, mf_mu=mf.mu, mf_bi=mf.bi,
              hybrid_lambda=lam)
 
@@ -176,7 +176,7 @@ def main():
                      "train_time_s": times.get(name, times.get(name.split("(")[0], ""))})
     rating_tab = pd.DataFrame(rows)
     print(rating_tab.round(4).to_string(index=False))
-    save_table(rating_tab, "04_rating_prediction")
+    save_table(rating_tab, "06_rating_prediction")
 
     n_train = np.bincount(u, minlength=n_users)[test_users]
     bucket = pd.cut(n_train, ACTIVITY_BINS, right=False).astype(str)
@@ -191,9 +191,9 @@ def main():
     rank_tab = pd.DataFrame(rows)
     print(f"Top-N (test 사용자 {len(test_users):,}명, 후보 1+{args.n_neg})")
     print(rank_tab.round(4).to_string(index=False))
-    save_table(rank_tab, "04_topn_ranking")
+    save_table(rank_tab, "06_topn_ranking")
     act = pd.DataFrame(act_rows)
-    save_table(act, "04_topn_by_activity")
+    save_table(act, "06_topn_by_activity")
 
     fig, ax = plt.subplots(1, 2, figsize=(14, 4.2))
     ax[0].barh(rank_tab.model, rank_tab["NDCG@10"], color="#4c72b0")
@@ -205,7 +205,7 @@ def main():
     ax[1].set_title("사용자 train 리뷰 수별 test HR@10")
     ax[1].set_xlabel("train 리뷰 수 구간")
     ax[1].legend(fontsize=7, ncol=2)
-    save_fig(plt, "04_topn_results")
+    save_fig(plt, "06_topn_results")
 
     # ------------------------------------------------------------ 같은 도시 후보 Top-N
     hm = pd.read_csv(HOTELREC_DIR / "hotel_map.csv", encoding="utf-8-sig").sort_values("hotel_id")
@@ -224,14 +224,14 @@ def main():
         rows.append({"model": name, **met})
     city_tab = pd.DataFrame(rows)
     print(city_tab.round(4).to_string(index=False))
-    save_table(city_tab, "04_topn_same_city")
+    save_table(city_tab, "06_topn_same_city")
 
     both = rank_tab[["model", "NDCG@10"]].merge(city_tab[["model", "NDCG@10"]], on="model",
                                                  suffixes=(" (무작위 후보)", " (같은 도시 후보)"))
     ax = both.set_index("model").plot.barh(figsize=(8, 5))
     ax.invert_yaxis()
     ax.set_title("test NDCG@10: 후보 구성에 따른 비교")
-    save_fig(plt, "04_topn_same_city")
+    save_fig(plt, "06_topn_same_city")
 
 
 if __name__ == "__main__":
