@@ -1,5 +1,5 @@
 """
-8단계 (B 파트): 편차 기반 사용자 선호와 여행자 페르소나 재구성
+4단계: 편차 기반 사용자 선호와 여행자 페르소나 재구성
 
 배경
     02_user_aspect_weights.py는 사용자별 회귀 계수(전역 가중치 쪽으로 축소한 Ridge)로 aspect 중요도를 만들었다.
@@ -32,11 +32,11 @@
 입력: data/pipeline/ratings_split.csv   (01_split.py)
       data/pipeline/hotel_aspects.npy   (03_hotel_features.py, train 리뷰만으로 만든 호텔 aspect 베이지안 평균)
 출력: data/pipeline/user_personas_dev.csv, persona_dev_centroids.csv
-      Pipeline/outputs/08_*.csv, figures/08_*.png
+      Pipeline/outputs/04_*.csv, figures/04_*.png
 
-실행 위치: 팀 저장소(gcu-ML05/ML05_Hotel_Recommend, pipeline 브랜치)의 Pipeline/ 폴더에 이 파일을 복사한 뒤
-      cd Pipeline && python 08_persona_deviation.py          (K 자동 선택)
-      cd Pipeline && python 08_persona_deviation.py --k 4    (K 지정)
+실행:
+      cd Pipeline && python 04_persona_deviation.py          (K 자동 선택)
+      cd Pipeline && python 04_persona_deviation.py --k 4    (K 지정)
 """
 import argparse
 
@@ -153,7 +153,7 @@ def main():
                      "inertia": km.inertia_, "max_centroid_dev": spread})
     ksel = pd.DataFrame(rows)
     print(ksel.round(4).to_string(index=False))
-    save_table(ksel, "08_kmeans_k_selection")
+    save_table(ksel, "04_kmeans_k_selection")
     k = args.k or int(ksel.loc[ksel.silhouette.idxmax(), "k"])
     print(f"선택 K = {k}")
 
@@ -167,9 +167,9 @@ def main():
     cent.insert(0, "persona", range(k))
     print(cent.round(3).to_string(index=False))
     cent.to_csv(WORK_DIR / "persona_dev_centroids.csv", index=False)
-    save_table(cent.round(4), "08_persona_dev_centroids")
+    save_table(cent.round(4), "04_persona_dev_centroids")
 
-    # 중요도 비율(02와 같은 형식, 합 1) 버전도 저장: 05_kaggle_generalization.py 등에 그대로 꽂아 쓰기 위함
+    # 중요도 비율(02와 같은 형식, 합 1) 버전도 저장: 08_kaggle_generalization.py 등에 그대로 꽂아 쓰기 위함
     # 전역 가중치 비율에 까다로움을 반영해 기울인다: share_k ∝ w_g,k · exp(strictness_k)
     w_path = WORK_DIR / "global_weights.npy"
     if w_path.exists():
@@ -179,7 +179,7 @@ def main():
         share_tab = pd.DataFrame(share, columns=ASPECTS)
         share_tab.insert(0, "persona", range(k))
         share_tab["name"] = cent["name"]
-        save_table(share_tab.round(4), "08_persona_dev_share")
+        save_table(share_tab.round(4), "04_persona_dev_share")
 
     users = pd.DataFrame(strict, columns=[f"strict_{a}" for a in ASPECTS])
     users.insert(0, "leniency", L)
@@ -192,7 +192,7 @@ def main():
     cent_c = -km.cluster_centers_                                   # 중심을 상대 편차(c) 단위로 되돌림
     tab = val_rmse_table(va, A, L, c, persona, cent_c)
     print(tab.round(4).to_string(index=False))
-    save_table(tab.round(5), "08_val_aspect_rmse")
+    save_table(tab.round(5), "04_val_aspect_rmse")
 
     # 그림 1: K 선택
     fig, ax = plt.subplots(1, 2, figsize=(10, 3.5))
@@ -203,7 +203,7 @@ def main():
     ax[1].set_title("중심과 전체 평균의 최대 차이 (점수 단위)")
     for a in ax:
         a.set_xlabel("K")
-    save_fig(plt, "08_kmeans_k_selection")
+    save_fig(plt, "04_kmeans_k_selection")
 
     # 그림 2: 페르소나별 까다로움
     C = cent[ASPECTS].to_numpy()
@@ -217,7 +217,7 @@ def main():
             ax.text(j, i, f"{C[i, j]:+.2f}", ha="center", va="center", fontsize=8)
     ax.set_title("페르소나별 aspect 까다로움 (+: 호텔 평균보다 박하게 평가)")
     plt.colorbar(im)
-    save_fig(plt, "08_persona_dev_strictness")
+    save_fig(plt, "04_persona_dev_strictness")
 
 
 if __name__ == "__main__":

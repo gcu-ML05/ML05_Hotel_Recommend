@@ -11,7 +11,7 @@
     ItemKNN            메모리 기반 CF, 기준 예측 잔차 유사도 + 공동 방문 순위 점수 (제안서 ①)
     BiasedMF           모델 기반 CF, 편향 포함 행렬분해 + L2 + SGD           (제안서 ②)
     ContentBased       aspect 중요도 x 호텔 aspect 평균 + TF-IDF 유사도      (제안서 ③)
-    하이브리드          λ·MF + (1-λ)·ContentBased (04_train_evaluate.py)    (제안서 ④)
+    하이브리드          λ·MF + (1-λ)·ContentBased (06_train_evaluate.py)    (제안서 ④)
 
 참고 문헌
     - Sarwar et al. (2001) Item-based collaborative filtering recommendation algorithms. WWW. (adjusted cosine)

@@ -1,8 +1,8 @@
 """
-4a단계 (선택): Item-kNN 하이퍼파라미터 선택 (val)
+7단계 (선택): Item-kNN 하이퍼파라미터 선택 (val)
 
 기존판(사용자 평균 기준, adjusted cosine)과 개선판(KNNBaseline)을 val 분할에서 비교하고
-04_train_evaluate.py의 기본값(k, shrink, damp)을 고른 근거를 남긴다.
+06_train_evaluate.py의 기본값(k, shrink, damp)을 고른 근거를 남긴다.
 
     val RMSE              : 모든 사용자의 val 리뷰 평점 예측
     HR@10 (predict)       : 평점 예측값으로 순위를 매긴 경우
@@ -11,7 +11,7 @@
     (Top-N은 val 사용자 5,000명, 정답 1 + 무작위 후보 99)
 
 설정 하나당 유사도 계산에 약 4~5분 걸린다 (전체 약 30분).
-출력: Pipeline/outputs/04a_itemknn_tuning.csv
+출력: Pipeline/outputs/07_itemknn_tuning.csv
 """
 import time
 
@@ -62,7 +62,7 @@ def main():
             print(rows[-1], flush=True)
     tab = pd.DataFrame(rows)
     print(tab.round(4).to_string(index=False))
-    save_table(tab, "04a_itemknn_tuning")
+    save_table(tab, "07_itemknn_tuning")
 
 
 if __name__ == "__main__":

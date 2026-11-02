@@ -1,18 +1,18 @@
 """
-5b단계 (B 파트): 새 페르소나와 수정 키워드 사전을 05의 Kaggle 일반화 검증에 연결해 비교
+10단계: 새 페르소나와 수정 키워드 사전을 08의 Kaggle 일반화 검증에 연결해 비교
 
-05_kaggle_generalization.py는 (a) 02의 기존 페르소나, (b) 수작업 LEXICON을 쓴다.
+08_kaggle_generalization.py는 (a) 02의 기존 페르소나, (b) 수작업 LEXICON을 쓴다.
 여기서는 다음 네 가지를 같은 지표로 비교한다.
 
-(1) 페르소나: 기존(02, 회귀 기반) vs 편차 기반(08)
+(1) 페르소나: 기존(02, 회귀 기반) vs 편차 기반(04)
 (2) 배정 텍스트: 긍정+부정 언급 전체 vs 부정 언급만 (부정 리뷰의 불만이 '까다로움'과 더 직접 대응)
-(3) 키워드 사전: 원본 LEXICON vs 수정 LEXICON (07 점검 결과 반영)
+(3) 키워드 사전: 원본 LEXICON vs 수정 LEXICON (09 점검 결과 반영)
 (4) 사전 강건성: 여행 유형별 aspect 언급 편차의 결론이 사전을 바꿔도 유지되는지
 
 지표: Cramér's V (여행자 유형 x 페르소나 연관 강도), 스피어만 상관 (콘텐츠 점수와 리뷰어 점수)
 
-선행 단계: 01~03, 05(persona_centroids.csv 사용), 08(08_persona_dev_share.csv 사용)
-출력: Pipeline/outputs/05b_*.csv
+선행 단계: 01~05 (02의 persona_centroids.csv, 04·05의 편차 기반 페르소나), 08 (LEXICON)
+출력: Pipeline/outputs/10_*.csv
 """
 import importlib
 
@@ -23,10 +23,10 @@ from scipy.stats import chi2_contingency, spearmanr
 from common import ASPECTS, KAGGLE_DIR, OUT_DIR, WORK_DIR, ensure_dirs, save_table
 
 # 파일명이 숫자로 시작해 import 문을 쓸 수 없으므로 importlib.import_module(모듈명)으로 불러옴 (원본 LEXICON 재사용)
-base_mod = importlib.import_module("05_kaggle_generalization")
+base_mod = importlib.import_module("08_kaggle_generalization")
 LEXICON_ORIG = base_mod.LEXICON
 
-# 수정 사전: 07 점검에서 지적된 모호한 키워드 제거 + 빠진 키워드 추가
+# 수정 사전: 09 점검에서 지적된 모호한 키워드 제거 + 빠진 키워드 추가
 REMOVE = {
     "rooms": ["bed", "beds"],          # "bed was comfortable"은 sleep_quality와 겹침
     "cleanliness": ["smell"],          # "smell of smoke"와 "smells good breakfast" 구분 불가 (원본에는 smelly만 남김)
@@ -42,7 +42,7 @@ ADD = {
 
 
 def build_patterns(lexicon):
-    """키워드 사전 -> aspect별 정규식 (단어 경계 매칭). 05와 같은 방식."""
+    """키워드 사전 -> aspect별 정규식 (단어 경계 매칭). 08과 같은 방식."""
     import re
     return {a: r"\b(?:" + "|".join(re.escape(w) for w in ws) + r")\b" for a, ws in lexicon.items()}
 
@@ -75,17 +75,17 @@ def load_personas():
     old = pd.read_csv(WORK_DIR / "persona_centroids.csv")
     users = pd.read_csv(WORK_DIR / "user_personas.csv")
     base_old = users[users.n_full >= 3][ASPECTS].mean().to_numpy()
-    new = pd.read_csv(OUT_DIR / "08_persona_dev_share.csv")
-    cnt = pd.read_csv(OUT_DIR / "08_persona_dev_centroids.csv").set_index("name").loc[new["name"], "n_users_fit"]
+    new = pd.read_csv(OUT_DIR / "04_persona_dev_share.csv")
+    cnt = pd.read_csv(OUT_DIR / "04_persona_dev_centroids.csv").set_index("name").loc[new["name"], "n_users_fit"]
     # 새 페르소나의 기준 = 학습 사용자 수로 가중한 중심 평균
     base_new = (new[ASPECTS].to_numpy() * cnt.to_numpy()[:, None]).sum(0) / cnt.sum()
-    out = {"기존(회귀 기반)": (old, base_old), "편차 기반(08)": (new, base_new)}
-    # 08b(축소 강도·K 개선) 결과가 있으면 함께 비교
-    tuned_path = OUT_DIR / "08b_persona_dev_share.csv"
+    out = {"기존(회귀 기반)": (old, base_old), "편차 기반(04)": (new, base_new)}
+    # 05(축소 강도·K 개선) 결과가 있으면 함께 비교
+    tuned_path = OUT_DIR / "05_persona_dev_share.csv"
     if tuned_path.exists():
         tuned = pd.read_csv(tuned_path)
         w = tuned["n_users_fit"].to_numpy()[:, None]
-        out["편차 기반 개선(08b)"] = (tuned, (tuned[ASPECTS].to_numpy() * w).sum(0) / w.sum())
+        out["편차 기반 개선(05)"] = (tuned, (tuned[ASPECTS].to_numpy() * w).sum(0) / w.sum())
     return out
 
 
@@ -124,7 +124,7 @@ def evaluate(POS, NEG, meta, cent, base, mode, w_g):
 
 
 def trip_deviation(POS, NEG, meta):
-    """여행 유형별 aspect 언급 비율 - 전체 평균 (%p). 05와 같은 정의, 행 = traveler_type/trip_type 그룹."""
+    """여행 유형별 aspect 언급 비율 - 전체 평균 (%p). 08과 같은 정의, 행 = traveler_type/trip_type 그룹."""
     M = POS + NEG
     has = M.sum(1) > 0
     S = pd.DataFrame(M[has] / M[has].sum(1, keepdims=True), columns=ASPECTS)
@@ -157,7 +157,7 @@ def main():
                              **evaluate(POS, NEG, k, cent, base, mode, w_g)})
     comp = pd.DataFrame(rows)
     print(comp.round(4).to_string(index=False))
-    save_table(comp.round(4), "05b_persona_comparison")
+    save_table(comp.round(4), "10_persona_comparison")
 
     # (4) 사전 강건성: 그룹별 편차 표가 사전 수정 후에도 같은지
     a, b = devs["원본 사전"], devs["수정 사전"]
@@ -171,13 +171,13 @@ def main():
     flat = np.corrcoef(A.to_numpy().ravel(), B.to_numpy().ravel())[0, 1]
     print(f"그룹 x aspect 편차 표의 상관(원본 vs 수정): {flat:.3f}, 최상위 aspect 유지 {same_top.mean():.0%}, "
           f"최하위 유지 {same_bottom.mean():.0%}")
-    save_table(rob.round(3), "05b_lexicon_robustness", index=True)
-    save_table(B.assign(column=b["column"]).round(3), "05b_aspect_mention_by_trip_type_revised", index=True)
+    save_table(rob.round(3), "10_lexicon_robustness", index=True)
+    save_table(B.assign(column=b["column"]).round(3), "10_aspect_mention_by_trip_type_revised", index=True)
 
     # 수정 사전 목록 기록 (팀 검토용)
     changes = [{"aspect": x, "action": "remove", "keyword": w} for x, ws in REMOVE.items() for w in ws]
     changes += [{"aspect": x, "action": "add", "keyword": w} for x, ws in ADD.items() for w in ws]
-    save_table(pd.DataFrame(changes), "05b_lexicon_changes")
+    save_table(pd.DataFrame(changes), "10_lexicon_changes")
 
 
 if __name__ == "__main__":
