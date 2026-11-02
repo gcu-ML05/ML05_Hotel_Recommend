@@ -15,7 +15,7 @@ HotelRec으로 학습한 모델이 신규 사용자에게 내놓는 예측 점�
     Baseline            μ + b_i
     MF                  μ + b_i                 (잠재 요인 p_u가 없으므로 호텔 편향까지만)
     Content(aspect)     w0 + Σ_k w_k · a_hk      (전역 aspect 가중치 x 호텔 aspect 평균)
-    Hybrid              λ · MF + (1-λ) · Content (λ는 06단계에서 선택한 값)
+    Hybrid-평점         λ · MF + (1-λ) · Content (λ는 06단계에서 val RMSE로 선택한 평점 하이브리드의 값)
 
 (3) 평가
     리뷰 단위: Kaggle 리뷰 점수(rating = 10점/2)와의 RMSE, MAE, 스피어만 순위상관
@@ -107,7 +107,7 @@ def main():
         "Baseline(μ+b_i)": s["base_mu"] + s["base_bi"],
         "MF(μ+b_i)": s["mf_mu"] + s["mf_bi"],
         "Content(aspect, 전역 w)": cb,
-        f"Hybrid(λ={lam})": lam * (s["mf_mu"] + s["mf_bi"]) + (1 - lam) * cb,
+        f"Hybrid-평점 (MF+Content, λ={lam})": lam * (s["mf_mu"] + s["mf_bi"]) + (1 - lam) * cb,
     }
     preds = {name: np.clip(p, 1, 5) for name, p in preds.items()}
 
@@ -140,7 +140,7 @@ def main():
     save_table(by_type, "11_kaggle_matched_by_traveler_type")
 
     fig, ax = plt.subplots(1, 2, figsize=(11, 4.2))
-    for a, name in zip(ax, ["MF(μ+b_i)", f"Hybrid(λ={lam})"]):
+    for a, name in zip(ax, ["MF(μ+b_i)", f"Hybrid-평점 (MF+Content, λ={lam})"]):
         ph = preds[name][hotel_mean.index]
         a.scatter(ph, hotel_mean, s=8, alpha=0.5)
         a.set_xlabel(f"HotelRec 예측 ({name})")
