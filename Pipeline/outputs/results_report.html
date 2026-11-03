@@ -1,0 +1,651 @@
+<title>Hotel Recommender Results</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: single-column document report. Key numbers → results per step (charts + tables) → limitations. Charts in 2 columns on wide screens */
+:root {
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --fg: #15181d;
+  --muted: #5a616d;
+  --faint: #8a919c;
+  --line: #dde1e7;
+  --grid: #eceef2;
+  --accent: #2a78d6;
+  --accent-soft: #e3eefb;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --mark: #b3b9c3;
+  --div-neg: #2a78d6;
+  --div-pos: #e34948;
+  --div-mid: #f0efec;
+  --warn-bg: #fdf3dc;
+  --warn-fg: #7a5200;
+  --ok-fg: #0b7a0b;
+  --font-body: "IBM Plex Sans", system-ui, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111317; --surface: #1a1d22; --fg: #eceef1; --muted: #a6adb8; --faint: #7d8591;
+    --line: #2d323a; --grid: #23272e; --accent: #3987e5; --accent-soft: #1d2d42;
+    --series-2: #d95926; --series-3: #199e70; --mark: #5c6470; --div-neg: #3987e5; --div-pos: #e66767; --div-mid: #383835;
+    --warn-bg: #3a2e12; --warn-fg: #f1c46a; --ok-fg: #4cc24c; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111317; --surface: #1a1d22; --fg: #eceef1; --muted: #a6adb8; --faint: #7d8591;
+  --line: #2d323a; --grid: #23272e; --accent: #3987e5; --accent-soft: #1d2d42;
+  --series-2: #d95926; --series-3: #199e70; --mark: #5c6470; --div-neg: #3987e5; --div-pos: #e66767; --div-mid: #383835;
+  --warn-bg: #3a2e12; --warn-fg: #f1c46a; --ok-fg: #4cc24c; color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.65; }
+.wrap { max-width: 1080px; margin: 0 auto; padding-block: 40px 72px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 56px; }
+header { display: grid; gap: 14px; }
+.eyebrow { font-family: var(--font-data); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { font-size: clamp(26px, 4vw, 36px); line-height: 1.25; margin: 0; font-weight: 700; text-wrap: balance; }
+h2 { font-size: 22px; margin: 0; font-weight: 700; text-wrap: balance; }
+h3 { font-size: 16px; margin: 0; font-weight: 600; }
+p { margin: 0; max-width: 68ch; }
+.lede { color: var(--muted); max-width: 72ch; }
+nav.toc { display: flex; flex-wrap: wrap; gap: 8px; }
+nav.toc a { font-size: 13px; color: var(--fg); text-decoration: none; border: 1px solid var(--line); background: var(--surface);
+  padding: 4px 12px; border-radius: 999px; }
+nav.toc a:hover, nav.toc a:focus-visible { border-color: var(--accent); color: var(--accent); outline: none; }
+section { display: grid; gap: 20px; scroll-margin-top: 16px; }
+.sec-head { display: grid; gap: 6px; }
+.sec-head .row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.tag { font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 999px; background: var(--warn-bg); color: var(--warn-fg); }
+.tag.owner { background: var(--accent-soft); color: var(--accent); }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: grid; gap: 4px; align-content: start; }
+.kpi .label { font-size: 13px; color: var(--muted); }
+.kpi .value { font-family: var(--font-data); font-size: 30px; font-weight: 500; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.kpi .note { font-size: 13px; color: var(--muted); }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 16px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: grid; gap: 12px; min-width: 0; }
+.panel .cap { font-size: 13px; color: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+.legend i.dot { width: 9px; height: 9px; border-radius: 50%; }
+ul.points { margin: 0; padding-left: 20px; display: grid; gap: 6px; max-width: 76ch; }
+.tbl { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font-weight: 600; color: var(--muted); font-size: 12.5px; }
+td.num, th.num { text-align: right; font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+tr.hl td { background: var(--accent-soft); }
+td.heat { text-align: center; font-family: var(--font-data); font-variant-numeric: tabular-nums; color: var(--fg); }
+svg.chart { width: 100%; height: auto; display: block; overflow: visible; }
+svg .axis-label { fill: var(--muted); font-size: 12px; font-family: var(--font-body); }
+svg .tick { fill: var(--faint); font-size: 11px; font-family: var(--font-data); }
+svg .val { fill: var(--fg); font-size: 11.5px; font-family: var(--font-data); }
+svg .gridline { stroke: var(--grid); stroke-width: 1; }
+svg .baseline { stroke: var(--line); stroke-width: 1; }
+svg .ref { stroke: var(--faint); stroke-width: 1; stroke-dasharray: 4 4; }
+svg [data-tip] { cursor: default; }
+svg .hit { fill: transparent; }
+.status { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.status div { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 4px; }
+.status b { font-size: 14px; }
+.status .ok { color: var(--ok-fg); font-weight: 600; font-size: 13px; }
+.status span:last-child { font-size: 13px; color: var(--muted); }
+#tip { position: fixed; pointer-events: none; z-index: 20; background: var(--fg); color: var(--bg); font-size: 12.5px; line-height: 1.45;
+  padding: 6px 10px; border-radius: 6px; max-width: 260px; white-space: pre-line; }
+footer { font-size: 13px; color: var(--muted); display: grid; gap: 6px; border-top: 1px solid var(--line); padding-top: 18px; }
+.evo { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 16px; }
+.evo ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.evo li { display: grid; grid-template-columns: 52px 1fr; gap: 10px; align-items: baseline; font-size: 14px; min-width: 0; }
+.evo li .stage { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .02em; }
+.evo li.now .stage { color: var(--accent); }
+.evo li.now { padding-top: 8px; border-top: 1px solid var(--line); }
+.evo .v { font-family: var(--font-data); font-variant-numeric: tabular-nums; font-weight: 500; }
+code { font-family: var(--font-data); font-size: .92em; }
+@media (prefers-reduced-motion: no-preference) { nav.toc a { transition: border-color .15s, color .15s; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">ML05 · Team 5 · as of 2026-11-02 · full results of pipeline steps 01~11</div>
+    <h1>Hotel recommendation pipeline results</h1>
+    <p class="lede">Memory-based CF, model-based CF, content-based and hybrid recommenders were trained on 1.22 million HotelRec (TripAdvisor) reviews, and users' aspect preferences and traveler personas were estimated. Booking.com (Kaggle) reviews were used to check whether this also works for new users on another platform. The numbers come from the CSVs in <code>Pipeline/outputs/</code> (seed 42).</p>
+    <nav class="toc" aria-label="Contents">
+      <a href="#steps">Steps</a><a href="#data">Data</a><a href="#aspect">Regression-based preferences</a><a href="#hotel">Hotel features</a><a href="#deviation">Deviation-based preferences</a>
+      <a href="#rating">Rating prediction</a><a href="#topn">Top-N recommendation</a><a href="#link">Plugging in preferences</a><a href="#kaggle-text">Kaggle text</a><a href="#kaggle-match">Kaggle hotel matching</a><a href="#evolution">Improvements</a><a href="#next">Limitations</a>
+    </nav>
+  </header>
+
+  <section aria-label="Key numbers">
+    <div class="kpis">
+      <div class="kpi"><span class="label">Lowest rating prediction RMSE (rating hybrid)</span><span class="value">0.906</span><span class="note">MF 0.907, baseline 0.909, mean prediction 1.004</span></div>
+      <div class="kpi"><span class="label">Top-N HR@10 (improved ItemKNN)</span><span class="value">0.349</span><span class="note">popularity 0.328, original ItemKNN 0.035</span></div>
+      <div class="kpi"><span class="label">Correlation with Booking.com hotel mean scores</span><span class="value">0.743</span><span class="note">505 shared hotels, MF hotel scores</span></div>
+      <div class="kpi"><span class="label">Preprocessing validation</span><span class="value">24/24</span><span class="note">rerun from the raw data matches the shared data</span></div>
+    </div>
+  </section>
+
+  <section id="steps">
+    <div class="sec-head"><h2>Pipeline steps</h2>
+      <p class="lede">Starts from the preprocessing results and runs in numeric order (about 25 minutes in total). The number in front of a result file name is the step that made it.</p></div>
+    <div class="tbl panel"><table>
+      <thead><tr><th>Step</th><th>Script</th><th>What it does</th><th>Owner</th></tr></thead>
+      <tbody>
+        <tr><td class="num">01</td><td><code>01_split.py</code></td><td>per-user chronological train/validation/test split</td><td>1</td></tr>
+        <tr><td class="num">02</td><td><code>02_user_aspect_weights.py</code></td><td>regression-based aspect weights, personas</td><td>2</td></tr>
+        <tr><td class="num">03</td><td><code>03_hotel_features.py</code></td><td>hotel aspect means, review TF-IDF</td><td>2</td></tr>
+        <tr><td class="num">04</td><td><code>04_persona_deviation.py</code></td><td>deviation-based leniency and strictness, personas</td><td>2</td></tr>
+        <tr><td class="num">05</td><td><code>05_persona_tuning.py</code></td><td>settings selection for 04 and test evaluation</td><td>2</td></tr>
+        <tr><td class="num">06</td><td><code>06_train_evaluate.py</code></td><td>model training, rating prediction and Top-N evaluation, plugging in the deviation-based preferences, hybrids</td><td>1</td></tr>
+        <tr><td class="num">07</td><td><code>07_tune_itemknn.py</code></td><td>evidence for the Item-kNN settings (optional)</td><td>1</td></tr>
+        <tr><td class="num">08</td><td><code>08_kaggle_generalization.py</code></td><td>aspect mentions in Kaggle reviews, preferences by trip type</td><td>2</td></tr>
+        <tr><td class="num">09</td><td><code>09_lexicon_audit.py</code></td><td>keyword lexicon audit</td><td>2</td></tr>
+        <tr><td class="num">10</td><td><code>10_persona_lexicon_compare.py</code></td><td>persona and keyword lexicon comparison, lexicon robustness</td><td>2</td></tr>
+        <tr><td class="num">11</td><td><code>11_kaggle_hotel_matching.py</code></td><td>predicted vs actual scores on hotels shared by HotelRec and Kaggle</td><td>1</td></tr>
+      </tbody></table></div>
+  </section>
+
+  <section id="data">
+    <div class="sec-head"><div class="row"><h2>01 · Data and split</h2></div>
+      <p class="lede">Each user's most recent review went to test, the one before it to val, and the rest to train. There is no time leakage of predicting the past from future reviews.</p></div>
+    <div class="status">
+      <div><b>train · partial</b><span class="ok">✓ byte-identical to the rerun from the raw data</span><span>1,228,619 reviews · 130,036 users · 46,747 hotels</span></div>
+      <div><b>hotel_map · user_map</b><span class="ok">✓ replaced with the 46,747-row / 130,036-row versions</span><span>share of hotels whose city name appears in their reviews 3.9% → 87.9%</span></div>
+      <div><b>Kaggle (Booking.com)</b><span class="ok">✓ validation passed</span><span>515,212 reviews · 1,494 hotels · 6 European cities</span></div>
+    </div>
+    <div class="tbl panel"><table>
+      <thead><tr><th>Split</th><th class="num">Reviews</th><th class="num">Users</th><th class="num">Hotels</th><th class="num">Mean rating</th><th class="num">All 6 sub-ratings</th></tr></thead>
+      <tbody>
+        <tr><td>train</td><td class="num">968,547</td><td class="num">130,036</td><td class="num">46,744</td><td class="num">4.11</td><td class="num">30.9%</td></tr>
+        <tr><td>val</td><td class="num">130,036</td><td class="num">130,036</td><td class="num">39,339</td><td class="num">4.15</td><td class="num">12.9%</td></tr>
+        <tr><td>test</td><td class="num">130,036</td><td class="num">130,036</td><td class="num">38,522</td><td class="num">4.16</td><td class="num">9.9%</td></tr>
+      </tbody></table>
+      <p class="cap">The more recent the review, the fewer sub-ratings it has. The aspect-based models are trained on past reviews and evaluated on recent ones.</p></div>
+  </section>
+
+  <section id="aspect">
+    <div class="sec-head"><div class="row"><h2>02 · Regression-based aspect importance and personas</h2></div>
+      <p class="lede">Aspect importance was estimated with a linear regression explaining the overall rating by the 6 sub-ratings. Users have few reviews, so the per-user weights use a Ridge that shrinks toward the global weights.</p></div>
+    <div class="grid2">
+      <div class="panel"><h3>Global aspect weights (R² = 0.761)</h3><div id="c-wg"></div>
+        <p class="cap">rooms and service influence the overall rating the most, location the least.</p></div>
+      <div class="panel"><h3>val RMSE by personalization strength λ</h3><div id="c-ridge"></div>
+        <p class="cap">The dashed line is the global weights (0.4565). The larger λ (the weaker the personalization), the lower the error, so the per-user weights were no better than the global weights.</p></div>
+    </div>
+    <div class="panel"><h3>Persona centroids (K=3, silhouette 0.352)</h3>
+      <div class="tbl"><table id="t-persona"></table></div>
+      <p class="cap">The importance shares of the three personas differ by only about 0.003, so they can hardly be called different traveler types. That is why 04·05 re-estimate the preferences from deviations instead of regression coefficients.</p></div>
+  </section>
+
+  <section id="hotel">
+    <div class="sec-head"><div class="row"><h2>03 · Hotel features</h2></div>
+      <p class="lede">Features of the 47k hotels for content-based recommendation were built from train reviews only: per-hotel means of the 6 sub-ratings (hotels with few reviews shrunk toward the overall mean) and the TF-IDF of review titles and texts (top 100 of 10k terms per hotel).</p></div>
+    <div class="grid2">
+      <div class="panel"><h3>Distribution of hotel aspect means</h3>
+        <div class="tbl"><table>
+          <thead><tr><th>aspect</th><th class="num">Hotel mean</th><th class="num">Std. dev.</th></tr></thead>
+          <tbody>
+            <tr><td>location</td><td class="num">4.357</td><td class="num">0.276</td></tr>
+            <tr><td>cleanliness</td><td class="num">4.354</td><td class="num">0.291</td></tr>
+            <tr><td>service</td><td class="num">4.253</td><td class="num">0.311</td></tr>
+            <tr><td>sleep_quality</td><td class="num">4.180</td><td class="num">0.286</td></tr>
+            <tr><td>rooms</td><td class="num">4.083</td><td class="num">0.327</td></tr>
+            <tr><td>value</td><td class="num">4.054</td><td class="num">0.290</td></tr>
+          </tbody></table></div>
+        <p class="cap">Most hotels score high on location and cleanliness; rooms and value score lower and differ more between hotels.</p></div>
+      <div class="panel"><h3>Top TF-IDF terms of hotels with many reviews</h3>
+        <div class="tbl"><table>
+          <thead><tr><th>Hotel</th><th>Top terms</th></tr></thead>
+          <tbody>
+            <tr><td>Sofitel London Gatwick</td><td>gatwick, sofitel, runway, terminal, monorail</td></tr>
+            <tr><td>Pan Pacific Singapore</td><td>singapore, pacific, raffles, mrt, marina</td></tr>
+            <tr><td>Sofitel Legend Metropole Hanoi</td><td>metropole, hanoi, vietnamese, legend, halong</td></tr>
+            <tr><td>Grand Hyatt New York</td><td>hyatt, nyc, midtown, manhattan, empire</td></tr>
+            <tr><td>Radisson Blu Manchester Airport</td><td>manchester, runway, terminals, walkway, planes</td></tr>
+          </tbody></table></div>
+        <p class="cap">For each hotel, the terms reveal its location and character (airport, downtown, tourist spot). A user profile is built from the terms of the hotels the user visited to find similar hotels.</p></div>
+    </div>
+  </section>
+
+  <section id="deviation">
+    <div class="sec-head"><div class="row"><h2>04·05 · Deviation-based preferences and personas</h2></div>
+      <p class="lede">Averages how much higher or lower the user's aspect scores are than that hotel's mean. How generously the user scores all aspects is <b>leniency</b>; after removing leniency, how harshly the user scores a particular aspect compared with others is <b>strictness</b>. Only means are taken, no coefficients are estimated, so it is stable even with few reviews.</p></div>
+    <div class="grid2">
+      <div class="panel"><h3>test sub-rating prediction RMSE (all aspects)</h3><div id="c-dev"></div>
+        <p class="cap">Leniency gives the largest improvement (0.905 → 0.878). Per-aspect personal strictness (−0.001) and personas (−0.0002) have small effects. Settings were chosen on val and test is reported separately.</p></div>
+      <div class="panel"><h3>val RMSE by strictness shrinkage strength M</h3>
+        <div class="legend"><span><i style="background:var(--accent)"></i>leniency + personal strictness</span><span><i style="background:var(--mark)"></i>leniency only</span></div>
+        <div id="c-shrink"></div>
+        <p class="cap">With weak shrinkage (M=1, 3) noise makes it worse than leniency only; M=30 is best.</p></div>
+    </div>
+    <div class="grid2">
+      <div class="panel"><h3>Per-aspect leniency coefficient β (val)</h3><div id="c-beta"></div>
+        <p class="cap">Only 0.46~0.67 times the leniency carries over to each aspect. location is smallest because the hotel itself matters more there than the user's tendency.</p></div>
+      <div class="panel"><h3>Number of personas K (val)</h3><div class="tbl"><table id="t-k"></table></div>
+        <p class="cap">Increasing K changes val RMSE by less than 0.0004, so the simplest K=2 was chosen.</p></div>
+    </div>
+    <div class="panel"><h3>Selected personas (M=30, K=2)</h3>
+      <div class="tbl"><table id="t-devp"></table></div>
+      <p class="cap">Strictness is the score difference (points) from the hotel mean. + means the user rates that aspect more harshly than others. "Strict on service" is harsh overall (leniency −0.08), "Strict on sleep" is generous (+0.07). The per-user assignment is in <code>data/pipeline/user_personas_dev_tuned.csv</code>.</p></div>
+  </section>
+
+  <section id="rating">
+    <div class="sec-head"><div class="row"><h2>06 · Rating prediction</h2></div>
+      <p class="lede">Error of predicting the ratings of all users' test reviews. Lower is better.</p></div>
+    <div class="grid2">
+      <div class="panel"><h3>test RMSE</h3><div id="c-rmse"></div>
+        <p class="cap">The dashed line is the baseline (μ+b_u+b_i). The improved ItemKNN is on par with the baseline; the original ItemKNN was worse than even the mean prediction.</p></div>
+      <div class="panel"><h3>MF learning curve</h3>
+        <div class="legend"><span><i style="background:var(--accent)"></i>val</span><span><i style="background:var(--mark)"></i>train</span></div>
+        <div id="c-mf"></div>
+        <p class="cap">val RMSE is lowest at epoch 15 (0.876), so the parameters from that point are used. It got worse for 3 consecutive epochs afterwards and training stopped early.</p></div>
+    </div>
+    <div class="tbl panel"><table id="t-rating"></table></div>
+    <ul class="points">
+      <li>The rating hybrid (MF 0.8 + strictness content 0.2) is best (0.906), followed by MF alone (0.907) and the baseline (0.909). The gaps are small because users have 7 reviews on average, leaving little to gain from personalization.</li>
+      <li>Changing ItemKNN's baseline prediction from the user mean to μ+b_u+b_i took RMSE from 1.034 to 0.909. However, the user has rated a neighbor of the target hotel in only 23% of cases, so the rest fall back to the baseline prediction.</li>
+    </ul>
+  </section>
+
+  <section id="topn">
+    <div class="sec-head"><div class="row"><h2>06·07 · Top-N recommendation</h2></div>
+      <p class="lede">The correct hotel (the one the user actually went to next) is mixed with candidates, and the share ranked in the top 10 (HR@10) is measured. Both random candidates from around the world and candidates from the same city as the correct hotel are reported.</p></div>
+    <div class="grid2">
+      <div class="panel"><h3>Random candidates (1 correct + 99) · 20,000 users</h3><div id="c-topn-rand"></div>
+        <p class="cap">The dashed line is random ranking (0.10).</p></div>
+      <div class="panel"><h3>Same-city candidates (1 correct + 49) · 4,975 users</h3><div id="c-topn-city"></div>
+        <p class="cap">The dashed line is random ranking (0.20). Only users in cities with 50+ hotels are evaluated.</p></div>
+    </div>
+    <div class="grid2">
+      <div class="panel"><h3>HR@10 by user history (train reviews), random candidates</h3>
+        <div class="legend" id="lg-act"></div><div id="c-act"></div>
+        <p class="cap">ItemKNN improves with more history and beats popularity from 5 reviews on. Content-based is slightly better the less history there is.</p></div>
+      <div class="panel"><h3>val HR@10 by ItemKNN number of neighbors (k) (07)</h3><div id="c-knn"></div>
+        <p class="cap">Ranking uses the sum of co-visit similarities to the hotels the user visited. More neighbors raise the overlap with the user's history from 7% to 23% and improve the ranking. The original version (user-mean baseline, k=50) scored 0.079.</p></div>
+    </div>
+    <div class="panel"><h3>Hybrid weight λ selection (val)</h3>
+      <p class="cap">The hybrid is split in two by purpose. <b>Rating hybrid</b> = λ·MF + (1−λ)·strictness content, λ chosen by val RMSE. <b>Ranking hybrid</b> = λ·ItemKNN + (1−λ)·strictness content (both scores standardized within the user's candidates, then summed), λ chosen by val NDCG@10. Both hybrids use λ=0.8, so CF and content actually mix. It was split this way because combining MF and content by NDCG chose λ=0 (content only), since both are weak at ranking.</p>
+      <div class="grid2" style="gap:12px"><div id="c-lam-ndcg"></div><div id="c-lam-rmse"></div></div></div>
+    <div class="tbl panel"><table id="t-topn"></table></div>
+  </section>
+
+  <section id="link">
+    <div class="sec-head"><div class="row"><h2>06 · Plugging the deviation-based preferences into recommendation</h2></div>
+      <p class="lede">The leniency, strictness and personas from 04·05 were put into the recommendation models of 06. The content-based aspect weights are tilted toward the aspects the user is strict about (weight ∝ global weight × exp(τ × strictness)), and κ × leniency is added to the predicted rating. A variant that uses the persona's strictness instead of the personal one for users with little history (fewer than 5 train reviews, 42.6%) was also compared.</p></div>
+    <div class="grid2">
+      <div class="panel"><h3>val NDCG@10 by strictness strength τ</h3><div id="c-tau"></div>
+        <p class="cap">Highest at τ=160 (0.0729). There the single aspect the user is strictest about takes about 89% of the weight, close to "choosing hotels mainly on the strictest aspect". The leniency coefficient κ is 0.51.</p></div>
+      <div class="panel"><h3>HR@10 of users with 20+ reviews (random candidates)</h3><div id="c-heavy"></div>
+        <p class="cap">The strictness effect is largest for users who wrote many reviews (0.110 → 0.119~0.123). For users with 3~4 reviews it is almost unchanged, 0.141 → 0.142.</p></div>
+    </div>
+    <div class="tbl panel"><table id="t-link"></table>
+      <p class="cap">Rating RMSE improved from 0.952 to 0.931, mostly thanks to the leniency correction, but is still higher than MF and Baseline (0.907~0.909). Ranking improves slightly on random candidates (HR@5 +11%) and not at all on same-city candidates. PersonaPopularity, regression or deviation, is similar to popularity.</p></div>
+  </section>
+
+  <section id="kaggle-text">
+    <div class="sec-head"><div class="row"><h2>08~10 · Kaggle text validation</h2></div>
+      <p class="lede">Each Booking.com review was treated as one new user, and aspect keyword mentions were counted in the positive and negative reviews (466,835 reviews, mentions found in 90.6%).</p></div>
+    <div class="panel"><h3>Aspect mention share by trip type − overall average (pp)</h3>
+      <div class="legend"><span><i class="dot" style="background:var(--div-pos)"></i>mentioned more</span><span><i class="dot" style="background:var(--div-neg)"></i>mentioned less</span></div>
+      <div class="tbl"><table id="t-mention"></table></div>
+      <p class="cap">Families mention location relatively more; business and solo travelers mention rooms, sleep_quality and value more. Travelers with friends is a small sample of 1,930 reviews.</p></div>
+    <div class="panel"><h3>Spearman correlation of hotel aspect reputation scores with reviewer scores</h3>
+      <div class="tbl"><table id="t-gen"></table></div>
+      <p class="cap">The global weights learned on HotelRec correlate better than equal weights for every trip type (0.274 → 0.301). The regression-based persona weights are almost the same as the global weights.</p></div>
+    <div class="grid2">
+      <div class="panel"><h3>How much the result changes when one keyword is removed (09)</h3><div id="c-sens"></div>
+        <p class="cap">The largest change (pp) in the mention deviation by trip type. The two words location and clean account for about 79% of their aspects' mentions and drive the result the most.</p></div>
+      <div class="panel"><h3>Revised keyword lexicon (10)</h3>
+        <ul class="points">
+          <li><b>4 removed</b>: bed·beds (rooms, overlaps with sleep), smell (cannot tell good from bad smells), cheap (used for quality complaints rather than price)</li>
+          <li><b>21 added</b>: waiter·manager·housekeeping etc. to service, overcharged·reasonable etc. to value, thin walls·uncomfortable·snoring etc. to sleep_quality</li>
+          <li><b>Conclusions hold</b>: with the revised lexicon the most-mentioned aspect per trip type is the same in 7 of 8 groups and the least-mentioned in all 8. The one change is Solo traveler (sleep_quality → rooms).</li>
+        </ul>
+        <p class="cap">The list is in <code>outputs/10_lexicon_changes.csv</code>, the robustness in <code>10_lexicon_robustness.csv</code>.</p></div>
+    </div>
+    <div class="panel"><h3>Kaggle validation by persona set (10, assigned by all review text)</h3>
+      <div class="tbl"><table id="t-pcomp"></table></div>
+      <p class="cap">The association between traveler type and assigned persona (Cramér's V) is weak for every combination, 0.03~0.05. The deviation-based (04, M=3) persona weights correlate best with reviewer scores (0.312), but the gap to the global weights (0.301) is small.</p></div>
+  </section>
+
+  <section id="kaggle-match">
+    <div class="sec-head"><div class="row"><h2>11 · Kaggle hotel matching</h2></div>
+      <p class="lede">The same hotels in both datasets were found by hotel name within the same city, and the scores the HotelRec models give a new user (user terms 0) were compared with the actual Booking.com scores.</p></div>
+    <div class="kpis">
+      <div class="kpi"><span class="label">Matched hotels</span><span class="value">505</span><span class="note">456 exact · 49 fuzzy (of 1,494 Kaggle hotels)</span></div>
+      <div class="kpi"><span class="label">Booking.com reviews of matched hotels</span><span class="value">203,215</span><span class="note">of 515,212 in total</span></div>
+      <div class="kpi"><span class="label">Mean score (5-point scale)</span><span class="value">4.21 · 4.11</span><span class="note">Booking.com · HotelRec training data</span></div>
+    </div>
+    <div class="grid2">
+      <div class="panel"><h3>Pearson correlation with hotel mean scores</h3><div id="c-match"></div>
+        <p class="cap">The hotel scores learned on TripAdvisor match the Booking.com hotel means with 0.74. The review-level correlation (0.28) is low because of differences between reviewers.</p></div>
+      <div class="panel"><h3>Matched hotels per city</h3><div id="c-city"></div></div>
+    </div>
+    <div class="tbl panel"><table id="t-match"></table></div>
+  </section>
+
+  <section id="evolution">
+    <div class="sec-head"><div class="row"><h2>How the methods were improved</h2></div>
+      <p class="lede">What problems showed up with the first approaches, and how they were changed to reach the current values. All settings were chosen on val; test was reported separately. Detailed tables are in "7. How the methods were improved" of <code>Pipeline/README.md</code>.</p></div>
+    <div class="evo">
+      <div class="panel"><h3>① Data mapping (preprocessing)</h3>
+        <ol>
+          <li class=""><span class="stage">First</span><span>used <code>hotel_map.csv</code> (162,023 rows) from the team Drive → city name appears in that hotel's reviews <span class="v">3.9%</span> of the time</span></li>
+          <li class=""><span class="stage">Cause</span><span>a mapping from a different run before the sampling step. <code>user_map.csv</code> was also missing, so no validation was possible</span></li>
+          <li class=""><span class="stage">Fix</span><span>reran the preprocessing on the raw data → train/partial byte-identical to the shared files, only the 2 mappings replaced</span></li>
+          <li class="now"><span class="stage">Now</span><span>city name match <span class="v">87.9%</span>, validation <span class="v">24/24</span> PASS. The same-city evaluation and Kaggle matching became possible</span></li>
+        </ol></div>
+      <div class="panel"><h3>② Top-N evaluation</h3>
+        <ol>
+          <li class=""><span class="stage">First</span><span>1 correct + 99 random hotels from around the world → popularity HR@10 <span class="v">0.328</span>, more than twice the personalized models (MF 0.117)</span></li>
+          <li class=""><span class="stage">Cause</span><span>random candidates are mostly unpopular hotels in other regions, told apart by popularity alone</span></li>
+          <li class=""><span class="stage">Fix</span><span>after fixing the mapping, added the same-city candidates (1+49) evaluation</span></li>
+          <li class="now"><span class="stage">Now</span><span>both reported. In the same city: popularity <span class="v">0.479</span>, ItemKNN <span class="v">0.392</span></span></li>
+        </ol></div>
+      <div class="panel"><h3>③ Memory-based CF: Item-kNN</h3>
+        <ol>
+          <li class=""><span class="stage">First</span><span>adjusted cosine (as in the proposal): val RMSE <span class="v">1.012</span>, worse than the mean prediction (0.974), HR@10 <span class="v">0.049</span></span></li>
+          <li class=""><span class="stage">Fix 1</span><span>baseline prediction μ+b_u+b_i (KNNBaseline): RMSE <span class="v">0.877</span></span></li>
+          <li class=""><span class="stage">Fix 2</span><span>co-visit score for ranking: HR@10 <span class="v">0.216</span></span></li>
+          <li class=""><span class="stage">Fix 3</span><span>neighbors 50 → 2000 (neighbor overlap 7% → 23%): HR@10 <span class="v">0.371</span></span></li>
+          <li class="now"><span class="stage">Now</span><span>test RMSE 1.034 → <span class="v">0.909</span>, HR@10 0.035 → <span class="v">0.349</span> (beats popularity 0.328)</span></li>
+        </ol></div>
+      <div class="panel"><h3>④ User aspect preferences and personas</h3>
+        <ol>
+          <li class=""><span class="stage">First</span><span>regression-based personal weights (02): the stronger the personalization, the larger the val error; the 3 personas differ by about <span class="v">0.003</span></span></li>
+          <li class=""><span class="stage">Cause</span><span>users have 3.7 reviews with complete sub-ratings on average, and the aspects are highly correlated</span></li>
+          <li class=""><span class="stage">Fix 1</span><span>leniency and strictness from the deviation from the hotel mean (04): test sub-rating RMSE 0.905 → <span class="v">0.890</span></span></li>
+          <li class=""><span class="stage">Fix 2</span><span>shrinkage strength M=3 → 30, per-aspect leniency β (05): <span class="v">0.877</span>, "Strict on service" and "Strict on sleep" personas</span></li>
+          <li class=""><span class="stage">Fix 3</span><span>plugged into recommendation, τ range widened and <span class="v">τ=160</span> chosen (06)</span></li>
+          <li class="now"><span class="stage">Now</span><span>content-based RMSE 0.952 → <span class="v">0.931</span>, random HR@5 0.070 → <span class="v">0.078</span>. No difference in the same city</span></li>
+        </ol></div>
+      <div class="panel"><h3>⑤ Hybrid</h3>
+        <ol>
+          <li class=""><span class="stage">First</span><span>λ·MF + (1−λ)·content, λ chosen by val NDCG → <span class="v">λ=0</span>, same as content-based</span></li>
+          <li class=""><span class="stage">Cause</span><span>MF and content are both weak at ranking, while val RMSE with 90% MF was lower than MF alone</span></li>
+          <li class=""><span class="stage">Fix</span><span>split by purpose: rating = MF + content (λ by RMSE), ranking = ItemKNN + content (per-user standardization, λ by NDCG)</span></li>
+          <li class="now"><span class="stage">Now</span><span>both hybrids at <span class="v">λ=0.8</span>. Rating RMSE <span class="v">0.906</span> (best), ranking on par with ItemKNN (NDCG@10 0.211)</span></li>
+        </ol></div>
+      <div class="panel"><h3>⑥ Kaggle generalization check</h3>
+        <ol>
+          <li class=""><span class="stage">First</span><span>aspect mention analysis with a keyword lexicon (08): clear differences by trip type, weak persona association (V <span class="v">0.034</span>)</span></li>
+          <li class=""><span class="stage">Audit</span><span>keyword sensitivity (09): <code>location</code> and <code>clean</code> are about 79% of the mentions; removing one changes the result by up to 4.7pp</span></li>
+          <li class=""><span class="stage">Fix</span><span>re-compared with the revised lexicon (4 removed, 21 added) (10): trip-type conclusions hold, persona association still weak</span></li>
+          <li class="now"><span class="stage">Now</span><span>matched 505 shared hotels (11): HotelRec hotel scores correlate <span class="v">0.74</span> with Booking.com hotel means</span></li>
+        </ol></div>
+    </div>
+  </section>
+
+  <section id="next">
+    <div class="sec-head"><h2>Limitations and next steps</h2></div>
+    <ul class="points">
+      <li><b>Effect of the hybrids</b>: the rating hybrid improves by about 0.001, and the ranking hybrid does not differ from ItemKNN alone on test (content-based adds almost nothing to ranking). Popularity is still strongest on same-city candidates.</li>
+      <li><b>Use of personas</b>: the deviation-based preferences are plugged into 06's recommendation, but the improvements are small. They are not plugged into the Kaggle new-user prediction (11) because there is no user history.</li>
+      <li><b>Evaluation coverage</b>: the same-city evaluation covers only users in large cities (25% of the sample), and the Kaggle matching only 505 hotels in 6 European cities.</li>
+      <li><b>Hand-made rules</b>: the aspect keyword lexicon (08, revised in 10) and the hotel name matching rules (11) were set by the team. The match list can be checked in <code>outputs/11_matched_hotels.csv</code>.</li>
+      <li><b>Deviation baseline</b>: the hotel means in 04 include the user's own train reviews, so for hotels with few reviews the deviation comes out slightly smaller.</li>
+    </ul>
+    <footer>
+      <span>Code and how to run: GitHub <code>gcu-ML05/ML05_Hotel_Recommend</code>, <code>pipeline-en</code> branch, <code>Pipeline/README.md</code></span>
+      <span>References: Antognini &amp; Faltings (2020) HotelRec · Sarwar et al. (2001) · Deshpande &amp; Karypis (2004) · Koren et al. (2009) · Koren (2010)</span>
+    </footer>
+  </section>
+</div>
+<div id="tip" hidden></div>
+
+<script>
+const D = {
+  rating: [
+    // [model, val RMSE, test RMSE, test MAE]
+    ["GlobalMean", 0.9743, 1.0040, 0.7844], ["Baseline (μ+b_u+b_i)", 0.8775, 0.9087, 0.6996],
+    ["ItemKNN (original)", 1.0122, 1.0341, 0.7724], ["ItemKNN (improved)", 0.8771, 0.9086, 0.6995],
+    ["MF", 0.8760, 0.9068, 0.6926], ["Hybrid-rating (MF+Content)", 0.8747, 0.9060, 0.6939], ["Content (aspect, global w)", 0.9199, 0.9523, 0.7459],
+    ["Content (aspect, personal w)", 0.9207, 0.9531, 0.7466], ["Content (aspect+text)", 0.9192, 0.9515, 0.7445],
+  ],
+  topn: [
+    // [model, random HR@10, random NDCG@10, same-city HR@10, same-city NDCG@10]
+    ["ItemKNN (improved)", 0.3492, 0.2106, 0.3916, 0.1909], ["Popularity", 0.3278, 0.1758, 0.4788, 0.2547],
+    ["PersonaPopularity (regression)", 0.3192, 0.1723, 0.4738, 0.2513], ["PersonaPopularity (deviation)", 0.3193, 0.1723, 0.4764, 0.2507],
+    ["Baseline", 0.1463, 0.0727, 0.3118, 0.1521],
+    ["Hybrid-ranking (ItemKNN+Content)", 0.3474, 0.2107, 0.3885, 0.1905], ["Content (aspect+text)", 0.1347, 0.0649, 0.2957, 0.1429], ["Content (aspect, personal w)", 0.1232, 0.0575, 0.2882, 0.1384],
+    ["MF", 0.1170, 0.0534, 0.2850, 0.1308], ["ItemKNN (original)", 0.0345, 0.0282, 0.0285, 0.0202],
+  ],
+  actX: ["3~4 reviews\n8,503 users", "5~9 reviews\n7,308 users", "10~19 reviews\n3,101 users", "20+ reviews\n1,088 users"],
+  act: [
+    ["ItemKNN (improved)", "var(--accent)", [0.2988, 0.3623, 0.4128, 0.4724]],
+    ["Popularity", "var(--series-2)", [0.3307, 0.3310, 0.3112, 0.3300]],
+    ["Content (aspect+text)", "var(--series-3)", [0.1410, 0.1334, 0.1290, 0.1103]],
+    ["MF", "var(--mark)", [0.1198, 0.1145, 0.1164, 0.1131]],
+  ],
+  knn: { x: ["k=50", "k=200", "k=500", "k=2000"], y: [0.2162, 0.2796, 0.3210, 0.3708], cov: ["7.4%", "16.3%", "20.8%", "22.7%"] },
+  lam: { x: [0, .1, .2, .3, .4, .5, .6, .7, .8, .9, 1],
+    ndcg: [0.0714, 0.1110, 0.1621, 0.1981, 0.2153, 0.2235, 0.2277, 0.2296, 0.2297, 0.2295, 0.2283],
+    rmse: [0.9080, 0.9006, 0.8941, 0.8885, 0.8839, 0.8802, 0.8774, 0.8756, 0.8747, 0.8749, 0.8760] },
+  mf: { train: [.8859,.8486,.8219,.8010,.7840,.7695,.7568,.7455,.7352,.7256,.7165,.7078,.6993,.6909,.6826,.6743,.6659,.6574],
+        val: [.9357,.9172,.9055,.8974,.8915,.8871,.8839,.8815,.8796,.8783,.8773,.8767,.8763,.8760,.8760,.8760,.8762,.8765] },
+  wg: [["rooms", .258], ["service", .254], ["value", .194], ["sleep_quality", .131], ["cleanliness", .116], ["location", .086]],
+  ridge: { x: ["0.3", "1", "3", "10", "30", "100", "300", "1000"], y: [.5912, .5571, .5337, .5148, .4988, .4776, .4610, .4542], global: .4565 },
+  aspects: ["service", "cleanliness", "value", "rooms", "location", "sleep_quality"],
+  persona: [["P0 (sleep_quality)", 96727, [.2444, .1118, .1867, .2484, .0823, .1263]],
+            ["P1 (rooms)", 15046, [.2463, .1104, .1875, .2504, .0801, .1254]],
+            ["P2 (location)", 18263, [.2429, .1131, .1861, .2466, .0843, .1270]]],
+  mention: [["Couple", 229319, [.068, -.274, .006, .67, -.518, .05]],
+            ["Family with older children", 24220, [.905, .365, -.571, -3.033, 2.83, -.496]],
+            ["Family with young children", 54848, [.734, .355, -.234, -1.636, 1.484, -.703]],
+            ["Group", 59041, [1.001, .359, .02, -.812, .182, -.75]],
+            ["Solo traveler", 97477, [-1.333, .052, .239, .736, -.581, .886]],
+            ["Travelers with friends", 1930, [-3.589, 4.289, .439, -7.346, 7.707, -1.501]],
+            ["Business trip", 73802, [-1.714, -.06, .711, 1.211, -1.006, .858]],
+            ["Leisure trip", 380008, [.281, -.014, -.139, -.281, .33, -.177]]],
+  genCols: ["All", "Couple", "Family (older)", "Family (young)", "Group", "Solo", "Friends"],
+  gen: [["equal weights", [.274, .2659, .26, .2536, .2719, .2979, .2446]],
+        ["HotelRec global weights", [.3011, .2972, .2786, .275, .2912, .3197, .2502]],
+        ["assigned persona weights", [.3014, .2974, .279, .2756, .2916, .32, .2511]]],
+  match: [["GlobalMean (μ)", .8117, .6689, null, null, null], ["Baseline (μ+b_i)", .7787, .6173, .2832, .7370, .7452],
+          ["MF (μ+b_i)", .7841, .6172, .2853, .7428, .7501], ["Content (aspect, global w)", .7879, .6378, .2624, .6742, .6661], ["Hybrid-rating (λ=0.8)", .7824, .6195, .2852, .7434, .7488]],
+  city: [["London", 182], ["Paris", 112], ["Barcelona", 78], ["Milan", 45], ["Vienna", 45], ["Amsterdam", 43]],
+  // 05_test_aspect_rmse.csv (ALL rows)
+  dev: [["hotel mean only", 0.90523], ["+ leniency", 0.88986], ["+ leniency + persona (04 original)", 0.89059], ["+ leniency + personal strictness (04 original, M=3)", 0.89553],
+        ["+ per-aspect leniency β", 0.87843], ["+ β leniency + persona (K=2)", 0.87822], ["+ β leniency + personal strictness (M=30)", 0.87726]],
+  shrink: { x: ["1", "3", "10", "30", "100", "300"], p1: [.87571, .87571, .87571, .87571, .87571, .87571], p3: [.89372, .88116, .87482, .87435, .87506, .87546] },
+  beta: [["value", .6748], ["sleep_quality", .6392], ["service", .6344], ["rooms", .6046], ["cleanliness", .5625], ["location", .4602]],
+  kcmp: [[2, .14811, .3507, .86411], [3, .13951, .2373, .86400], [4, .13584, .1734, .86386], [5, .11926, .1131, .86378]],
+  devp: [["Strict on service (lenient on location)", 45607, 35.1, -0.0796, 3.9997, 8.06, [.0349, -.0097, .0179, -.0098, -.0182, -.018]],
+         ["Strict on sleep (lenient on service)", 84429, 64.9, 0.0668, 4.1749, 7.12, [-.0238, .0058, -.0151, .0065, .014, .0149]]],
+  sens: [["location · location", 4.661], ["cleanliness · clean", 3.777], ["rooms · room", 2.393], ["service · staff", 1.554],
+         ["rooms · bed", 1.393], ["rooms · rooms", 0.818], ["location · station", 0.781], ["sleep_quality · noisy", 0.583]],
+  // 10_persona_comparison.csv (assigned by all text): [lexicon, persona, Cramér's V, equal weights, global weights, persona weights]
+  pcomp: [["original", "regression-based (02)", .0338, .2740, .3011, .3014], ["original", "deviation-based (04, M=3)", .0478, .2740, .3011, .3118],
+          ["original", "deviation-based improved (05, M=30)", .0295, .2740, .3011, .3037], ["revised", "regression-based (02)", .0373, .2672, .2967, .2970],
+          ["revised", "deviation-based (04, M=3)", .0520, .2672, .2967, .3107], ["revised", "deviation-based improved (05, M=30)", .0351, .2672, .2967, .2995]],
+};
+
+const NS = "http://www.w3.org/2000/svg";
+const f3 = v => v.toFixed(3);
+function el(tag, attrs, parent, text) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text != null) e.textContent = text;
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function svg(id, w, h, label) {
+  const s = el("svg", { viewBox: `0 0 ${w} ${h}`, class: "chart", role: "img", "aria-label": label });
+  document.getElementById(id).appendChild(s);
+  return s;
+}
+function ticks(min, max, n) {
+  const step = (max - min) / n, out = [];
+  for (let i = 0; i <= n; i++) out.push(min + step * i);
+  return out;
+}
+
+// horizontal bars (from 0) or dots (axis may be cut, dot=true)
+function hchart(id, rows, o) {
+  const W = 620, L = o.labelW || 190, R = 56, rowH = 30, top = 8, H = top + rows.length * rowH + 28;
+  const s = svg(id, W, H, o.label);
+  const x = v => L + (v - o.min) / (o.max - o.min) * (W - L - R);
+  ticks(o.min, o.max, o.nt || 4).forEach(t => {
+    el("line", { x1: x(t), x2: x(t), y1: top, y2: H - 22, class: "gridline" }, s);
+    el("text", { x: x(t), y: H - 6, "text-anchor": "middle", class: "tick" }, s, o.tf ? o.tf(t) : t.toFixed(2));
+  });
+  if (o.ref != null) el("line", { x1: x(o.ref), x2: x(o.ref), y1: top - 4, y2: H - 22, class: "ref" }, s);
+  rows.forEach((r, i) => {
+    const cy = top + i * rowH + rowH / 2, hl = o.hl && o.hl.includes(r[0]), alt = o.hl2 && o.hl2.includes(r[0]);
+    const color = hl ? "var(--accent)" : alt ? "var(--series-2)" : "var(--mark)";
+    el("text", { x: L - 10, y: cy + 4, "text-anchor": "end", class: "axis-label", style: hl ? "fill:var(--fg);font-weight:600" : "" }, s, r[0]);
+    const g = el("g", { "data-tip": `${r[0]}\n${o.name}: ${o.vf ? o.vf(r[1]) : f3(r[1])}${r[2] ? "\n" + r[2] : ""}` }, s);
+    el("rect", { x: 0, y: cy - rowH / 2, width: W, height: rowH, class: "hit" }, g);
+    if (o.dot) {
+      el("line", { x1: L, x2: x(r[1]), y1: cy, y2: cy, stroke: "var(--grid)", "stroke-width": 2 }, g);
+      el("circle", { cx: x(r[1]), cy, r: 6, fill: color, stroke: "var(--surface)", "stroke-width": 2 }, g);
+    } else {
+      const w = Math.max(2, x(r[1]) - x(o.min));
+      el("path", { d: `M${L},${cy - 8}h${w - 4}a4,4 0 0 1 4,4v8a4,4 0 0 1 -4,4h${-(w - 4)}z`, fill: color }, g);
+    }
+    el("text", { x: x(r[1]) + 10, y: cy + 4, class: "val" }, g, o.vf ? o.vf(r[1]) : f3(r[1]));
+  });
+}
+
+// line chart (categorical x)
+function line(id, xs, series, o) {
+  const W = 620, H = o.h || 260, L = 52, R = 18, T = 14, B = o.xb || 34;
+  const s = svg(id, W, H, o.label);
+  const px = i => L + (xs.length === 1 ? 0 : i / (xs.length - 1)) * (W - L - R);
+  const py = v => T + (1 - (v - o.min) / (o.max - o.min)) * (H - T - B);
+  ticks(o.min, o.max, o.nt || 4).forEach(t => {
+    el("line", { x1: L, x2: W - R, y1: py(t), y2: py(t), class: "gridline" }, s);
+    el("text", { x: L - 8, y: py(t) + 4, "text-anchor": "end", class: "tick" }, s, o.tf ? o.tf(t) : t.toFixed(2));
+  });
+  if (o.ref != null) el("line", { x1: L, x2: W - R, y1: py(o.ref), y2: py(o.ref), class: "ref" }, s);
+  xs.forEach((x, i) => {
+    if (o.xEvery && i % o.xEvery) return;
+    String(x).split("\n").forEach((part, j) =>
+      el("text", { x: px(i), y: H - B + 18 + j * 14, "text-anchor": "middle", class: j ? "tick" : "axis-label" }, s, part));
+  });
+  series.forEach(se => {
+    el("path", { d: se.v.map((v, i) => `${i ? "L" : "M"}${px(i)},${py(v)}`).join(""), fill: "none", stroke: se.c, "stroke-width": 2,
+      "stroke-linejoin": "round", "stroke-linecap": "round" }, s);
+    se.v.forEach((v, i) => {
+      const g = el("g", { "data-tip": `${se.n} · ${String(xs[i]).split("\n")[0]}\n${o.name}: ${o.vf ? o.vf(v) : f3(v)}${se.extra ? "\n" + se.extra[i] : ""}` }, s);
+      el("circle", { cx: px(i), cy: py(v), r: 12, class: "hit" }, g);
+      el("circle", { cx: px(i), cy: py(v), r: se.mark || 4, fill: se.c, stroke: "var(--surface)", "stroke-width": 2 }, g);
+    });
+    if (se.endLabel) el("text", { x: px(se.v.length - 1) - 4, y: py(se.v[se.v.length - 1]) - 10, "text-anchor": "end", class: "val" }, s, se.endLabel);
+  });
+  (o.marks || []).forEach(m => el("text", { x: px(m.i), y: py(m.v) - 12, "text-anchor": "middle", class: "val" }, s, m.t));
+}
+
+function table(id, head, rows, numFrom, hlRow) {
+  const t = document.getElementById(id);
+  t.innerHTML = "<thead><tr>" + head.map((h, i) => `<th class="${i >= numFrom ? "num" : ""}">${h}</th>`).join("") + "</tr></thead><tbody>" +
+    rows.map(r => `<tr class="${hlRow && hlRow(r) ? "hl" : ""}">` + r.map((c, i) => `<td class="${i >= numFrom ? "num" : ""}">${c}</td>`).join("") + "</tr>").join("") + "</tbody>";
+}
+
+// rating prediction
+const rr = [...D.rating].sort((a, b) => a[2] - b[2]);
+hchart("c-rmse", rr.map(r => [r[0], r[2], `MAE ${f3(r[3])} · val RMSE ${f3(r[1])}`]),
+  { min: 0.88, max: 1.05, dot: true, ref: 0.9087, name: "test RMSE", hl: ["Hybrid-rating (MF+Content)"], hl2: ["MF"], label: "test RMSE by model", nt: 4, tf: v => v.toFixed(3) });
+line("c-mf", D.mf.val.map((_, i) => i + 1), [
+  { n: "train", c: "var(--mark)", v: D.mf.train, mark: 3 },
+  { n: "val", c: "var(--accent)", v: D.mf.val, mark: 3 }],
+  { min: 0.64, max: 0.96, name: "RMSE", label: "MF RMSE by epoch", xEvery: 1, h: 240, marks: [{ i: 14, v: 0.8760, t: "lowest 0.876 (epoch 15)" }] });
+table("t-rating", ["Model", "val RMSE", "test RMSE", "test MAE"], D.rating.map(r => [r[0], f3(r[1]), f3(r[2]), f3(r[3])]), 1, r => r[0] === "Hybrid-rating (MF+Content)");
+
+// Top-N
+const tr = [...D.topn].sort((a, b) => b[1] - a[1]);
+hchart("c-topn-rand", tr.map(r => [r[0], r[1], `NDCG@10 ${f3(r[2])}`]),
+  { min: 0, max: 0.5, ref: 0.1, name: "HR@10", hl: ["ItemKNN (improved)"], hl2: ["Popularity"], label: "random-candidate HR@10", nt: 5, labelW: 210 });
+const tc = [...D.topn].sort((a, b) => b[3] - a[3]);
+hchart("c-topn-city", tc.map(r => [r[0], r[3], `NDCG@10 ${f3(r[4])}`]),
+  { min: 0, max: 0.5, ref: 0.2, name: "HR@10", hl: ["ItemKNN (improved)"], hl2: ["Popularity"], label: "same-city candidate HR@10", nt: 5, labelW: 210 });
+document.getElementById("lg-act").innerHTML = D.act.map(a => `<span><i style="background:${a[1]}"></i>${a[0]}</span>`).join("");
+line("c-act", D.actX, D.act.map(a => ({ n: a[0], c: a[1], v: a[2] })), { min: 0, max: 0.5, name: "HR@10", label: "HR@10 by history", nt: 5, xb: 48, h: 270 });
+line("c-knn", D.knn.x, [{ n: "ItemKNN (improved)", c: "var(--accent)", v: D.knn.y, extra: D.knn.cov.map(c => "neighbor overlap " + c) }],
+  { min: 0, max: 0.4, ref: 0.0794, name: "val HR@10", label: "HR@10 by number of neighbors", nt: 4, h: 240,
+    marks: D.knn.y.map((v, i) => ({ i, v, t: f3(v) })) });
+line("c-lam-ndcg", D.lam.x.map(String), [{ n: "ranking hybrid", c: "var(--accent)", v: D.lam.ndcg }],
+  { min: 0.05, max: 0.25, name: "val NDCG@10 (λ = ItemKNN share)", label: "ranking hybrid val NDCG@10 by λ", nt: 4, h: 200, xEvery: 2, tf: v => v.toFixed(2), marks: [{ i: 8, v: 0.2297, t: "λ=0.8" }] });
+line("c-lam-rmse", D.lam.x.map(String), [{ n: "rating hybrid", c: "var(--series-2)", v: D.lam.rmse }],
+  { min: 0.87, max: 0.91, name: "val RMSE (λ = MF share)", label: "rating hybrid val RMSE by λ", nt: 4, h: 200, xEvery: 2, tf: v => v.toFixed(3), marks: [{ i: 8, v: 0.8747, t: "λ=0.8" }] });
+table("t-topn", ["Model", "Random HR@10", "Random NDCG@10", "Same-city HR@10", "Same-city NDCG@10"],
+  D.topn.map(r => [r[0], f3(r[1]), f3(r[2]), f3(r[3]), f3(r[4])]), 1, r => r[0] === "ItemKNN (improved)");
+
+// aspects and personas
+hchart("c-wg", D.wg, { min: 0, max: 0.3, name: "regression coefficient", label: "global aspect weights", nt: 3, labelW: 120, hl: ["rooms", "service"] });
+line("c-ridge", D.ridge.x, [{ n: "per-user weights", c: "var(--accent)", v: D.ridge.y }],
+  { min: 0.44, max: 0.6, ref: D.ridge.global, name: "val RMSE", label: "val RMSE by λ", nt: 4, h: 230, tf: v => v.toFixed(2) });
+table("t-persona", ["Persona", "Assigned users", ...D.aspects],
+  D.persona.map(p => [p[0], p[1].toLocaleString(), ...p[2].map(f3)]), 1);
+
+// Kaggle text: diverging colors (red = mentioned more, blue = mentioned less, gray = 0)
+const mt = document.getElementById("t-mention"), lim = 3;
+mt.innerHTML = "<thead><tr><th>Trip type</th><th class='num'>Reviews</th>" + D.aspects.map(a => `<th class="num">${a}</th>`).join("") + "</tr></thead><tbody>" +
+  D.mention.map(r => "<tr><td>" + r[0] + "</td><td class='num'>" + r[1].toLocaleString() + "</td>" + r[2].map(v => {
+    const k = Math.min(Math.abs(v) / lim, 1) * 70, c = v >= 0 ? "var(--div-pos)" : "var(--div-neg)";
+    return `<td class="heat" style="background:color-mix(in oklab, ${c} ${k.toFixed(0)}%, var(--div-mid))">${(v > 0 ? "+" : "") + v.toFixed(1)}</td>`;
+  }).join("") + "</tr>").join("") + "</tbody>";
+table("t-gen", ["Weights", ...D.genCols], D.gen.map(g => [g[0], ...g[1].map(f3)]), 1, r => r[0] === "HotelRec global weights");
+
+// Kaggle matching
+hchart("c-match", D.match.filter(m => m[4] != null).map(m => [m[0], m[4], `hotel Spearman ${f3(m[5])} · review RMSE ${f3(m[1])}`]),
+  { min: 0, max: 1, name: "Pearson correlation", label: "correlation with hotel mean scores", nt: 4, labelW: 230, hl: ["MF (μ+b_i)"] });
+hchart("c-city", D.city.map(c => [c[0], c[1]]), { min: 0, max: 200, name: "matched hotels", label: "matched hotels per city", nt: 4, labelW: 110, vf: v => String(v), tf: v => String(Math.round(v)) });
+table("t-match", ["Model (new-user prediction)", "Review RMSE", "Review MAE", "Review Spearman", "Hotel Pearson", "Hotel Spearman"],
+  D.match.map(m => [m[0], ...m.slice(1).map(v => v == null ? "–" : f3(v))]), 1, r => r[0] === "MF (μ+b_i)");
+
+// deviation-based preferences (04·05)
+hchart("c-dev", D.dev, { min: 0.87, max: 0.91, dot: true, ref: 0.90523, name: "test RMSE", label: "test sub-rating RMSE by step",
+  nt: 4, labelW: 300, hl: ["+ β leniency + personal strictness (M=30)"], hl2: ["+ leniency"], tf: v => v.toFixed(3) });
+line("c-shrink", D.shrink.x, [
+  { n: "leniency only", c: "var(--mark)", v: D.shrink.p1, mark: 3 },
+  { n: "leniency + personal strictness", c: "var(--accent)", v: D.shrink.p3 }],
+  { min: 0.87, max: 0.895, name: "val RMSE", label: "val RMSE by shrinkage strength M", nt: 5, h: 230, tf: v => v.toFixed(3),
+    marks: [{ i: 3, v: 0.87435, t: "M=30 chosen" }] });
+hchart("c-beta", D.beta, { min: 0, max: 0.8, name: "β", label: "per-aspect leniency coefficient", nt: 4, labelW: 120, hl: ["location"] });
+table("t-k", ["K", "Silhouette", "Smallest cluster", "val RMSE"],
+  D.kcmp.map(r => [r[0], f3(r[1]), (r[2] * 100).toFixed(1) + "%", r[3].toFixed(5)]), 1, r => r[0] === 2);
+table("t-devp", ["Persona", "Users", "Share", "Mean leniency", "Mean rating", "Mean reviews", ...D.aspects],
+  D.devp.map(p => [p[0], p[1].toLocaleString(), p[2].toFixed(1) + "%", (p[3] > 0 ? "+" : "") + f3(p[3]), f3(p[4]), p[5].toFixed(2),
+    ...p[6].map(v => (v > 0 ? "+" : "") + v.toFixed(3))]), 1);
+
+// keyword lexicon audit (09) and persona comparison (10)
+hchart("c-sens", D.sens, { min: 0, max: 5, name: "largest change (pp)", label: "keyword sensitivity", nt: 5, labelW: 170,
+  hl: ["location · location", "cleanliness · clean"], vf: v => v.toFixed(2), tf: v => v.toFixed(0) });
+table("t-pcomp", ["Lexicon", "Persona", "Cramér's V", "Corr.: equal weights", "Corr.: global weights", "Corr.: persona weights"],
+  D.pcomp.map(r => [r[0], r[1], f3(r[2]), f3(r[3]), f3(r[4]), f3(r[5])]), 2, r => r[1] === "deviation-based (04, M=3)" && r[0] === "original");
+
+// plugging the deviation-based preferences into recommendation (06)
+line("c-tau", ["0", "5", "10", "20", "40", "80", "160", "320"],
+  [{ n: "Content(strictness, personal)", c: "var(--accent)", v: [.0671, .0674, .0676, .0679, .0690, .0712, .0729, .0728] }],
+  { min: 0.065, max: 0.075, name: "val NDCG@10", label: "val NDCG@10 by τ", nt: 4, h: 230, tf: v => v.toFixed(3),
+    marks: [{ i: 6, v: .0729, t: "τ=160 chosen" }] });
+hchart("c-heavy", [["Content (aspect+text)", .1103], ["Content (strictness, personal)", .1195], ["Content (strictness, persona)", .1232],
+  ["Content (strictness, persona if few reviews)", .1195], ["MF", .1131]],
+  { min: 0, max: 0.15, name: "HR@10", label: "HR@10 of users with 20+ reviews", nt: 3, labelW: 260,
+    hl: ["Content (strictness, persona)"], hl2: ["Content (aspect+text)"] });
+table("t-link", ["Model", "test RMSE", "Random HR@5", "Random NDCG@10", "Same-city HR@10", "Same-city NDCG@10"], [
+  ["Content (aspect+text)", "0.952", "0.070", "0.065", "0.296", "0.143"],
+  ["Content (strictness, personal)", "0.945", "0.076", "0.067", "0.296", "0.142"],
+  ["Content (strictness, persona)", "0.931", "0.077", "0.068", "0.298", "0.143"],
+  ["Content (strictness, persona if few reviews)", "0.939", "0.078", "0.068", "0.293", "0.142"],
+  ["PersonaPopularity (regression, K=3)", "–", "0.215", "0.172", "0.474", "0.251"],
+  ["PersonaPopularity (deviation, K=2)", "–", "0.216", "0.172", "0.476", "0.251"]], 1,
+  r => r[0] === "Content (strictness, persona)");
+
+// tooltip
+const tip = document.getElementById("tip");
+document.addEventListener("mousemove", e => {
+  const g = e.target.closest && e.target.closest("[data-tip]");
+  if (!g) { tip.hidden = true; return; }
+  tip.textContent = g.getAttribute("data-tip");
+  tip.hidden = false;
+  const x = Math.min(e.clientX + 14, window.innerWidth - tip.offsetWidth - 8);
+  tip.style.left = x + "px";
+  tip.style.top = (e.clientY + 14) + "px";
+});
+</script>

@@ -20,6 +20,8 @@ env/
 # Raw and processed data
 data/raw/*
 data/processed/*
+data/processing/
+data/pipeline/
 
 # Keep directory structure
 !data/raw/.gitkeep

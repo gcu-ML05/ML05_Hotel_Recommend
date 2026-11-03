@@ -1,77 +1,84 @@
-# 추천 시스템 텀 프로젝트 — 데이터 전처리
+# Hotel Recommender System Term Project — Data Preprocessing
 
-## 1. 프로젝트 소개
+## 1. About the project
 
-본 저장소는 머신러닝 추천 시스템 텀 프로젝트에서 사용할 데이터의 전처리 과정을 관리하기 위한 저장소입니다.
+This repository manages the preprocessing of the data used in the Machine Learning Team 5 project **A Rating-Based Hybrid "Hotel Recommender System"**.
 
-데이터를 분석하고 정제하여 추천 모델의 학습 및 평가에 사용할 수 있는 형태로 변환하는 것을 목표로 합니다.
+Two hotel review datasets are analyzed, cleaned and converted into a form that can be used to train and evaluate the recommendation models.
 
-### 프로젝트 목표
+### Project goals
 
-- 데이터셋의 구조와 특성 파악
-- 결측치, 중복 데이터 및 잘못된 데이터 처리
-- 추천 시스템에 적합한 데이터 형태로 변환
-- 전처리 결과의 품질 검증
-- 팀원 누구나 동일한 과정을 재현할 수 있는 환경 구축
+- Understand the structure and properties of the datasets
+- Handle missing values, duplicates and invalid data
+- Convert the data into a form suited to recommender systems (user ID, hotel ID, rating, sub-ratings, review text)
+- Validate the quality of the preprocessing results
+- Set up an environment where every team member can reproduce the same process
 
-## 2. 데이터셋
+## 2. Datasets
 
-본 프로젝트는 텀 프로젝트 요구사항에 따라 최소 2개의 데이터셋을 사용합니다.
+The two datasets are not merged; **each is preprocessed separately**.
 
-| 데이터셋   | 사용 목적                   | 출처             |
-| ---------- | --------------------------- | ---------------- |
-| 데이터셋 A | 모델 구축 및 학습           | [데이터셋 A URL] |
-| 데이터셋 B | 관련 도메인에서 모델 테스트 | [데이터셋 B URL] |
+|             | Dataset A: HotelRec                                | Dataset B: 515K Hotel Reviews in Europe                                      |
+| ----------- | -------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Purpose     | model design and training                          | new-user generalization test                                                 |
+| Source      | TripAdvisor reviews. Antognini & Faltings (2020)   | Booking.com reviews. Kaggle                                                  |
+| Link        | https://github.com/Diego999/HotelRec               | https://www.kaggle.com/datasets/jiashenliu/515k-hotel-reviews-data-in-europe |
+| Size (raw)  | 50,264,531 reviews / 21,891,401 users / 365,055 hotels | 515,738 reviews / 1,494 hotels (6 European cities)                       |
+| Period      | 2001.02 ~ 2019.05                                  | 2015 ~ 2017                                                                  |
+| User ID     | yes (`author`)                                     | no                                                                           |
+| Ratings     | overall rating (1~5) + 6 sub-ratings (some reviews only) | `Reviewer_Score` (10-point scale)                                      |
+| Review text | title + body                                       | positive/negative separated                                                  |
+| Other       | -                                                  | trip type tags, nationality, hotel coordinates                               |
+| Terms of use | **academic research only**                        | Kaggle dataset                                                               |
 
-데이터셋이 확정되면 각 데이터의 출처, 라이선스, 컬럼 구성 및 전처리 기준을 추가로 작성합니다.
+> The raw data is not included in the repository because of its size and terms of use. Download it from the links above and put it in `data/raw/`.
+> HotelRec is for academic research, so do not share the preprocessing results through public links.
 
-## 3. 프로젝트 구조
+## 3. Project structure
 
 ```text
-recsys-preprocessing/
+ML05_Hotel_Recommend/
 ├── README.md
 ├── requirements.txt
 ├── .gitignore
-├── data/
-│   ├── raw/
-│   └── processed/
-├── notebooks/
-├── src/
-│   └── preprocessing/
-│       ├── __init__.py
-│       ├── load_data.py
-│       ├── clean_data.py
-│       ├── transform_data.py
-│       └── validate_data.py
-└── reports/
+├── data/                          # not pushed to Git
+│   ├── raw/                       # raw data (HotelRec.txt, Hotel_Reviews.csv)
+│   └── processing/                # preprocessing results
+│       ├── hotelrec/
+│       └── kaggle/
+├── Preprocessing/
+│   ├── 01_preprocess_hotelrec.py  # HotelRec preprocessing (training data)
+│   ├── 02_preprocess_kaggle.py    # Kaggle preprocessing (test data)
+│   ├── 03_validate_preprocessing.py   # automatic validation of the results
+│   └── 04_eda.ipynb               # exploratory data analysis
+└── reports/                       # before/after comparisons, validation results, EDA figures (pushed to Git)
 ```
 
-### 주요 디렉터리 설명
+### Main directories
 
-- `data/raw/`: 원본 데이터 저장 위치
-- `data/processed/`: 전처리가 완료된 데이터 저장 위치
-- `notebooks/`: 탐색적 데이터 분석 및 실험 코드
-- `src/preprocessing/`: 재사용 가능한 전처리 코드
-- `reports/`: 전처리 결과, 데이터 통계 및 검증 기록
+- `data/raw/`: where the raw data is stored
+- `data/processing/`: where the preprocessed data is stored
+- `Preprocessing/`: preprocessing and validation code and the EDA notebook
+- `reports/`: before/after comparison tables, validation results (`validation_report.csv`), EDA figures (`eda_figures/`)
 
-## 4. 개발 환경 설정
+## 4. Development environment
 
-### 사전 준비
+### Prerequisites
 
-- Python 3.11 이상
+- Python 3.10 or later
 - Git
-- Visual Studio Code 등 코드 편집기
+- A code editor such as Visual Studio Code (to run the notebook)
 
-### 1단계. 저장소 복제
+### Step 1. Clone the repository
 
 ```bash
 git clone [GITHUB_REPOSITORY_URL]
-cd recsys-preprocessing
+cd ML05_Hotel_Recommend
 ```
 
-`[GITHUB_REPOSITORY_URL]`은 실제 GitHub 저장소 주소로 변경합니다.
+Replace `[GITHUB_REPOSITORY_URL]` with the actual GitHub repository address.
 
-### 2단계. 가상환경 생성
+### Step 2. Create a virtual environment
 
 Windows:
 
@@ -87,63 +94,195 @@ python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-### 3단계. 라이브러리 설치
+### Step 3. Install the libraries
 
 ```bash
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-## 5. 데이터 전처리 과정
+## 5. Data preprocessing
 
-전처리는 다음 순서로 진행합니다.
+### 5-1. How to run
 
-1. **데이터 로딩:** 원본 데이터 파일을 불러오고 컬럼 및 데이터 타입을 확인합니다.
-2. **탐색적 데이터 분석(EDA):** 데이터 크기, 결측치, 중복, 값의 분포 등을 확인합니다.
-3. **데이터 정제:** 결측치, 중복 레코드, 잘못된 값 및 일관되지 않은 형식을 처리합니다.
-4. **데이터 변환:** 식별자와 데이터 타입을 정리하고 추천 알고리즘에 필요한 형태로 변환합니다.
-5. **데이터 분할:** 필요한 경우 학습·검증·테스트 데이터로 분할합니다.
-6. **데이터 검증:** 전처리 후 데이터의 무결성과 품질을 확인합니다.
-7. **결과 저장:** 전처리가 완료된 데이터와 처리 결과를 저장합니다.
+Put the raw data in `data/raw/`, then run the scripts in order from the `Preprocessing/` folder.
 
-구체적인 전처리 방법은 선정한 데이터셋의 구조와 추천 알고리즘에 따라 결정합니다.
+```bash
+cd Preprocessing
 
-## 6. 데이터 관리 원칙
+# 1) HotelRec (training data)
+python 01_preprocess_hotelrec.py --src ../data/raw/HotelRec.txt --out-dir ../data/processing/hotelrec
 
-- 원본 데이터는 가능한 한 수정하지 않고 별도로 보관합니다.
-- 전처리 결과는 원본 데이터와 분리하여 관리합니다.
-- 용량이 크거나 재배포가 제한된 데이터는 GitHub에 직접 업로드하지 않습니다.
-- 데이터셋의 출처와 다운로드 방법을 문서화합니다.
-- 전처리 과정에서 적용한 규칙과 가정을 기록합니다.
+# 2) Kaggle (test data)
+python 02_preprocess_kaggle.py --src ../data/raw/Hotel_Reviews.csv --out-dir ../data/processing/kaggle
 
-## 7. 재현성 관리
+# 3) Validate the results (everything must PASS)
+python 03_validate_preprocessing.py --hotelrec-dir ../data/processing/hotelrec --kaggle-dir ../data/processing/kaggle
+```
 
-- `requirements.txt`를 통해 필요한 라이브러리를 관리합니다.
-- 무작위 샘플링이나 데이터 분할에는 필요한 경우 동일한 랜덤 시드를 사용합니다.
-- 전처리 전후의 데이터 크기와 주요 통계량을 기록합니다.
-- 동일한 코드를 실행했을 때 일관된 결과를 얻을 수 있도록 관리합니다.
+For the EDA, open `04_eda.ipynb`, check the paths in the first code cell, then `Run All`.
 
-## 8. 협업 규칙
+**Notes on the HotelRec preprocessing**
 
-1. 작업을 시작하기 전에 최신 변경 사항을 가져옵니다.
-2. 주요 기능을 수정할 때는 별도의 브랜치 사용을 권장합니다.
-3. 전처리 코드는 기능별로 분리하여 작성합니다.
-4. 변경 사항을 커밋하기 전에 실행 및 검증합니다.
-5. 커밋 메시지는 변경 내용을 명확하게 작성합니다.
-6. 데이터 컬럼이나 전처리 규칙이 변경되면 관련 문서도 함께 수정합니다.
+- It reads the raw file (about 50 million lines) twice, so it takes a long time and creates an intermediate file (`interim_candidates.csv`, tens of GB). **Check the free disk space first.** If it is not enough, point `--out-dir` to another drive.
+- To rerun only step 3 after the scans are done, reuse the intermediate file.
 
-## 9. 진행 상황
+```bash
+python 01_preprocess_hotelrec.py --resume --interim <path to interim_candidates.csv> --out-dir <output path> \
+    --raw-total 50264531 --raw-placeholder 1216923 --raw-users 21891400 --raw-hotels 365055
+```
 
-- [ ] 데이터셋 2개 선정 및 출처 기록
-- [ ] GitHub 저장소 및 개발 환경 초기 설정
-- [ ] 탐색적 데이터 분석 수행
-- [ ] 데이터셋별 전처리 코드 구현
-- [ ] 전처리 결과 검증
-- [ ] 전처리 결과 및 통계 기록
-- [ ] 모델 개발 및 평가에 필요한 데이터 준비
+| Option                       | Default | Description                                                              |
+| ---------------------------- | ------- | ------------------------------------------------------------------------ |
+| `--min-user`                 | 5       | minimum reviews per user                                                 |
+| `--min-hotel`                | 20      | minimum reviews per hotel                                                |
+| `--max-users`                | 200000  | maximum number of users kept at random after filtering (0 = no sampling) |
+| `--min-hotel-after-sampling` | 10      | minimum reviews per hotel for the refiltering after sampling             |
+| `--seed`                     | 42      | random seed for the sampling                                             |
 
-## 10. 참고 자료
+### 5-2. Preprocessing criteria
 
-- 데이터셋 A: [출처 URL]
-- 데이터셋 B: [출처 URL]
-- 외부 라이브러리 및 참고 코드: 사용 시 출처 기록
+**Team decisions**
+
+| Item                                       | Decision                                                                       |
+| ------------------------------------------ | ------------------------------------------------------------------------------ |
+| Region                                     | no restriction (worldwide)                                                     |
+| Minimum reviews per user/hotel             | users 5+, hotels 20+ (hotels 10+ after user sampling)                          |
+| Reviews missing some sub-ratings           | not removed; saved separately (`hotelrec_partial.csv`)                         |
+| Duplicate ratings of a hotel by one user   | only the most recent review is kept                                            |
+| Kaggle rating scale                        | `Reviewer_Score` divided by 2 to get a 5-point scale                           |
+
+**HotelRec processing order**
+
+1. Remove anonymous authors: `/undefined`, `null`, `A TripAdvisor Member` etc. are not real users and would be grouped into one "giant user", so they are excluded (1,216,923 reviews)
+2. Extract candidates: read the raw file one line at a time and save only rows with users of 5+ and hotels of 20+ reviews to an intermediate file
+3. Format validation: rating in 1~5, date conversion, missing author/hotel checks. Sub-ratings outside 1~5 are set to missing
+4. Duplicate removal: keep only the latest review per (user, hotel)
+5. Iterative filtering: repeat the user and hotel conditions until nothing more is removed
+6. User sampling: draw at most 200,000 users at random (seed=42), then refilter with the 10-review hotel threshold
+7. ID assignment: integer `user_id` and `hotel_id` (the same in train and partial)
+8. Split save: `hotelrec_train.csv` if all 6 sub-ratings are present, otherwise `hotelrec_partial.csv`
+
+**Kaggle processing order**
+
+1. Remove exact duplicate rows (526)
+2. Date conversion, nationality whitespace cleanup, city extraction from the address
+3. `rating = Reviewer_Score / 2` (the original score is kept as `reviewer_score_10`)
+4. Replace the `No Negative` / `No Positive` placeholder phrases with empty values and build `review_text` by joining positive + negative
+5. Extract trip purpose, traveler type, number of nights, room type, mobile flag and pet flag from `Tags`
+6. Format validation, then save
+
+### 5-3. Preprocessing results (before/after)
+
+**HotelRec**
+
+| Step                                    | Rows       | Users      | Hotels  | Reviews per user |
+| --------------------------------------- | ---------- | ---------- | ------- | ---------------- |
+| Raw                                     | 50,264,531 | 21,891,401 | 365,055 | -                |
+| Anonymous authors removed               | 49,047,608 | 21,891,400 | 365,055 | 2.24             |
+| First-pass candidates (users≥5, hotels≥20) | 20,694,926 | 2,030,322 | 251,813 | 10.19          |
+| Duplicates removed (latest 1)           | 19,819,559 | 2,030,322  | 251,813 | 9.76             |
+| Iterative filtering                     | 17,690,307 | 1,747,203  | 162,023 | 10.12            |
+| User sampling + refiltering (final)     | 1,228,619  | 130,036    | 46,747  | 9.45             |
+| └ train (all 6 sub-ratings)             | 328,995    | 89,687     | 42,651  | 3.67             |
+| └ partial (some/no sub-ratings)         | 899,624    | 127,516    | 46,747  | 7.05             |
+
+Reviews with all 6 sub-ratings are about 26.8% of the final data. The missing rate per sub-rating is service 27.3%, cleanliness 49.5%, value 49.5%, rooms 51.5%, location 51.3%, sleep quality 56.9%.
+
+**Kaggle**
+
+| Item                        | Before  | After                    |
+| --------------------------- | ------- | ------------------------ |
+| Rows                        | 515,738 | 515,212                  |
+| Hotels                      | 1,494   | 1,494                    |
+| Exact duplicate rows        | 526     | 0                        |
+| `No Positive` placeholders  | 35,946  | 0 (converted to empty)   |
+| `No Negative` placeholders  | 127,890 | 0 (converted to empty)   |
+| `Tags` parse failures       | -       | 0                        |
+
+Missing values: trip purpose 15,004 (2.9%), room type and nights 192 each, reviews with completely empty text 236, coordinates (`lat`/`lng`) 3,268 (17 hotels, kept as is in `hotel_meta_kaggle.csv`).
+
+Traveler type distribution: Couple 252,005 / Solo traveler 108,431 / Group 65,338 / Family with young children 60,975 / Family with older children 26,320 / Travelers with friends 2,143
+
+### 5-4. Output files
+
+**`data/processing/hotelrec/`**
+
+| File                          | Contents                                                                    |
+| ----------------------------- | --------------------------------------------------------------------------- |
+| `hotelrec_train.csv`          | reviews with all 6 sub-ratings (**not a training/validation split**)        |
+| `hotelrec_partial.csv`        | reviews missing some/all sub-ratings                                        |
+| `hotel_map.csv`               | `hotel_id`, `hotel_url`, `tripadvisor_id`, `hotel_name`, `location`         |
+| `user_map.csv`                | `user_id`, `author`                                                         |
+| `reports/hotelrec_report.csv` | before/after comparison per step                                            |
+
+train/partial columns: `user_id, hotel_id, rating, date, service, cleanliness, value, rooms, location, sleep_quality, title, text`
+
+**`data/processing/kaggle/`**
+
+| File                                      | Contents                                                              |
+| ----------------------------------------- | --------------------------------------------------------------------- |
+| `kaggle_test.csv`                         | cleaned reviews                                                       |
+| `hotel_meta_kaggle.csv`                   | `hotel_id`, name, address, city, coordinates, average score, review count |
+| `reports/kaggle_report.csv`               | before/after comparison                                               |
+| `reports/kaggle_traveler_type_counts.csv` | traveler type distribution                                            |
+
+`kaggle_test.csv` columns: `review_id, hotel_id, hotel_name, city, review_date, reviewer_score_10, rating, reviewer_nationality, trip_type, traveler_type, nights, room_type, is_mobile, with_pet, positive_review, negative_review, review_text`
+
+### 5-5. Known limitations and caveats
+
+- **Users have few reviews with complete sub-ratings.** In train the mean per user is 3.67 (median 3), and 11,160 users (12.4%) have 7 or more. The per-user aspect importance regression needs its own criteria (a higher minimum count, regularization, using partial as well, etc.).
+- **No training/validation split was made inside HotelRec.** The evaluation scheme is decided in the modeling step.
+- **HotelRec is a random sample of users.** It is 200,000 users drawn from about 1.75 million users who passed the filtering, so reproducing it needs the same seed and the same raw data.
+- **Kaggle has no user IDs.** Collaborative filtering cannot be tested; the data is used to validate the content-based model and the traveler types.
+- **The rating scale conversion is a simple proportion.** No distribution correction other than 10-point → 5-point (÷2) was applied.
+- **Duplicates among short reviews** ("Just perfect" etc.) may have been written by different people, so they were not removed.
+
+## 6. Data management principles
+
+- The raw data is not modified and is kept separately in `data/raw/`.
+- The preprocessing results are kept apart from the raw data in `data/processing/`.
+- Large data or data with restricted redistribution is not pushed to GitHub. Add the following to `.gitignore`.
+
+```text
+data/
+*.csv
+*.txt
+.venv/
+```
+
+- The preprocessed data is shared through Google Drive: **(add the Drive link)**
+- Copy the before/after comparison tables and validation results (small CSVs) into `reports/` and push them with `git add -f`.
+- The rules and assumptions applied in preprocessing are recorded in sections 5-2 and 5-5 of this document.
+
+## 7. Reproducibility
+
+- `requirements.txt` manages the required libraries.
+- Random sampling is fixed with `--seed 42`.
+- The data size and main statistics before and after preprocessing are recorded automatically in each `reports/*_report.csv`.
+- `03_validate_preprocessing.py` automatically checks duplicates, value ranges, minimum review counts and ID consistency; every item must PASS.
+
+## 8. Collaboration rules
+
+1. Pull the latest changes before starting work (`git pull`).
+2. Use a separate branch when changing a major feature.
+3. Write the preprocessing code split by function.
+4. Run and validate with `03_validate_preprocessing.py` before committing.
+5. Write commit messages that clearly describe the change. (e.g. `feat: add HotelRec preprocessing code`)
+6. When data columns or preprocessing rules change, update this document as well.
+
+## 9. Progress
+
+- [x] Select the 2 datasets and record their sources
+- [ ] Initial GitHub repository and development environment setup (`requirements.txt`, `.gitignore`)
+- [x] Exploratory data analysis (`04_eda.ipynb`)
+- [x] Preprocessing code for each dataset
+- [x] Validate the preprocessing results (`03_validate_preprocessing.py`, 24 checks PASS)
+- [x] Record the preprocessing results and statistics
+- [ ] Prepare the data needed for model development and evaluation (HotelRec training/validation split, train user criteria)
+
+## 10. References
+
+- HotelRec: https://github.com/Diego999/HotelRec — Antognini & Faltings, _HotelRec: a Novel Very Large-Scale Hotel Recommendation Dataset_ (2020)
+- 515K Hotel Reviews Data in Europe (Kaggle): https://www.kaggle.com/datasets/jiashenliu/515k-hotel-reviews-data-in-europe
+- Libraries used: pandas, numpy, matplotlib

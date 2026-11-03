@@ -1,0 +1,3 @@
+﻿persona,service,cleanliness,value,rooms,location,sleep_quality,name,n_users_fit,n_users_all
+0,0.024,-0.0048,-0.0168,-0.0247,0.0967,-0.0828,P0_strict_location,30111,82093
+1,-0.0348,0.0072,0.0072,0.03,-0.1261,0.1316,P1_strict_sleep_quality,21717,47943
