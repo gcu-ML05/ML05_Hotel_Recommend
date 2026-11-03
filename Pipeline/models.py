@@ -1,23 +1,23 @@
 """
-추천 모델 (제안서 3절의 필터링 방법 + 비교용 기준선)
+Recommendation models (the filtering methods in section 3 of the proposal + baselines for comparison)
 
-모든 모델은 같은 인터페이스를 가진다.
-    fit(u, i, r, n_users, n_items)   u, i, r: 학습 평점의 사용자 ID / 호텔 ID / 평점 배열
-    predict(u, i)                    (u[k], i[k]) 쌍마다 예측 평점(또는 순위 점수) 배열
+All models share the same interface.
+    fit(u, i, r, n_users, n_items)   u, i, r: user ID / hotel ID / rating arrays of the training ratings
+    predict(u, i)                    array of predicted ratings (or ranking scores) for each (u[k], i[k]) pair
 
-    BiasBaseline       μ + b_u + b_i                                     (평점 예측 기준선)
-    Popularity         호텔 리뷰 수                                        (Top-N 기준선)
-    PersonaPopularity  같은 페르소나 사용자들이 높게 평가한 호텔 수           (제안서의 군집 기준선)
-    ItemKNN            메모리 기반 CF, 기준 예측 잔차 유사도 + 공동 방문 순위 점수 (제안서 ①)
-    BiasedMF           모델 기반 CF, 편향 포함 행렬분해 + L2 + SGD           (제안서 ②)
-    ContentBased       aspect 중요도 x 호텔 aspect 평균 + TF-IDF 유사도      (제안서 ③)
-    하이브리드          λ·MF + (1-λ)·ContentBased (06_train_evaluate.py)    (제안서 ④)
+    BiasBaseline       μ + b_u + b_i                                     (rating prediction baseline)
+    Popularity         number of hotel reviews                           (Top-N baseline)
+    PersonaPopularity  count of high ratings by users of the same persona (the proposal's cluster baseline)
+    ItemKNN            memory-based CF, baseline-residual similarity + co-visit ranking score (proposal ①)
+    BiasedMF           model-based CF, biased matrix factorization + L2 + SGD (proposal ②)
+    ContentBased       aspect importance x hotel aspect means + TF-IDF similarity (proposal ③)
+    Hybrid             λ·MF + (1-λ)·ContentBased (06_train_evaluate.py)  (proposal ④)
 
-참고 문헌
+References
     - Sarwar et al. (2001) Item-based collaborative filtering recommendation algorithms. WWW. (adjusted cosine)
     - Koren, Bell, Volinsky (2009) Matrix factorization techniques for recommender systems. IEEE Computer. (biased MF, SGD)
-    - Koren (2010) Factor in the neighbors. ACM TKDD. (정규화된 편향 기준선, KNNBaseline)
-    - Deshpande & Karypis (2004) Item-based top-N recommendation algorithms. ACM TOIS. (공동 방문 유사도 순위)
+    - Koren (2010) Factor in the neighbors. ACM TKDD. (regularized bias baseline, KNNBaseline)
+    - Deshpande & Karypis (2004) Item-based top-N recommendation algorithms. ACM TOIS. (co-visit similarity ranking)
 """
 import time
 
@@ -29,8 +29,8 @@ from common import SEED, rmse
 
 def user_batches(u, size):
     """
-    (u, i) 쌍을 사용자 묶음 단위로 처리하기 위한 도우미.
-    yield (users, sel, local): 이 묶음의 고유 사용자 배열, 원래 배열에서의 위치, users 안에서의 위치
+    Helper for processing (u, i) pairs in batches of users.
+    yield (users, sel, local): unique users of this batch, positions in the original arrays, positions within users
     """
     order = np.argsort(u, kind="stable")
     us = u[order]
@@ -44,7 +44,7 @@ def user_batches(u, size):
 
 
 class BiasBaseline:
-    """r̂ = μ + b_u + b_i. 편향은 정규화된 평균을 번갈아 계산 (Koren 2010)"""
+    """r̂ = μ + b_u + b_i. The biases are computed as alternating regularized means (Koren 2010)"""
 
     def __init__(self, reg_u=5.0, reg_i=10.0, n_iter=10):
         self.reg_u, self.reg_i, self.n_iter = reg_u, reg_i, n_iter
@@ -63,7 +63,7 @@ class BiasBaseline:
 
 
 class Popularity:
-    """학습 데이터의 리뷰 수가 많은 호텔일수록 높은 점수 (순위 평가 전용)"""
+    """Hotels with more reviews in the training data score higher (ranking evaluation only)"""
 
     def fit(self, u, i, r, n_users, n_items):
         self.cnt = np.bincount(i, minlength=n_items).astype(float)
@@ -74,16 +74,16 @@ class Popularity:
 
 
 class PersonaPopularity:
-    """사용자와 같은 페르소나에 속한 사용자들이 4점 이상 준 횟수가 많은 호텔일수록 높은 점수"""
+    """Hotels that users of the same persona as the user rated 4 or higher more often score higher"""
 
     def __init__(self, persona):
-        self.persona = persona            # (n_users,) 사용자별 페르소나 번호
+        self.persona = persona            # (n_users,) persona index of each user
 
     def fit(self, u, i, r, n_users, n_items):
         like = r >= 4
         self.M = np.zeros((self.persona.max() + 1, n_items))
         np.add.at(self.M, (self.persona[u[like]], i[like]), 1)
-        # 동점일 때는 전체 인기도로 순서를 정하도록 아주 작은 값을 더함
+        # add a tiny amount so that ties are broken by overall popularity
         self.M += 1e-6 * np.bincount(i, minlength=n_items)
         return self
 
@@ -92,8 +92,8 @@ class PersonaPopularity:
 
 
 def _top_k_rows(M, row_offset, k):
-    """밀집 행렬 M의 행마다 값이 큰 k개(양수만)를 (행, 열, 값)으로 반환"""
-    # np.argpartition: 전체 정렬 없이 상위 k개의 위치만 찾음 (순서는 보장하지 않음)
+    """For each row of the dense matrix M, return the k largest (positive only) values as (row, col, value)"""
+    # np.argpartition: find only the positions of the top k without a full sort (order not guaranteed)
     top = np.argpartition(-M, k, axis=1)[:, :k]
     v = np.take_along_axis(M, top, axis=1)
     keep = v > 0
@@ -102,24 +102,24 @@ def _top_k_rows(M, row_offset, k):
 
 class ItemKNN:
     """
-    메모리 기반 CF (Item-kNN)
+    Memory-based CF (Item-kNN)
 
-    평점 예측 (predict)
-        b_ui = 기준 예측. center="baseline"이면 μ + b_u + b_i (KNNBaseline, Koren 2010),
-               center="user_mean"이면 사용자 평균 μ_u (adjusted cosine, Sarwar et al. 2001)
-        sim(i, j) = 잔차 (r - b) 벡터의 코사인 유사도 x n_ij / (n_ij + shrink)
-                    (n_ij: 함께 평가한 사용자 수. 적을수록 유사도를 줄임)
-        호텔마다 유사도 상위 k개(양수)만 이웃으로 보관한다.
+    Rating prediction (predict)
+        b_ui = baseline prediction. center="baseline": μ + b_u + b_i (KNNBaseline, Koren 2010),
+               center="user_mean": user mean μ_u (adjusted cosine, Sarwar et al. 2001)
+        sim(i, j) = cosine similarity of the residual (r - b) vectors x n_ij / (n_ij + shrink)
+                    (n_ij: number of users who rated both. The fewer, the more the similarity is shrunk)
+        Only the top k (positive) neighbors by similarity are kept per hotel.
         r̂(u, h) = b_uh + Σ_{j∈N(h)∩I_u} sim(h,j)(r_uj - b_uj) / (Σ_{j∈N(h)∩I_u} sim(h,j) + damp)
-            damp: 사용자가 평가한 이웃이 1~2개뿐일 때 그 잔차를 그대로 믿지 않도록 분모를 키움
-            이웃 중 사용자가 평가한 호텔이 없으면 r̂ = b_uh
+            damp: enlarges the denominator so the residuals are not trusted as is when the user rated only 1~2 neighbors
+            if the user rated none of the neighbors, r̂ = b_uh
 
-    Top-N 점수 (rank_score)
-        평점 예측은 후보 대부분이 이웃과 겹치지 않아 b_uh로 동점이 되므로 순위용 점수를 따로 둔다.
-        score(u, h) = Σ_{j∈I_u} cos_co(h, j)   (사용자가 방문한 호텔들과의 공동 방문 유사도 합)
-            cos_co(i, j) = n_ij / sqrt(n_i · n_j)   호텔마다 상위 k개만 보관
-        동점은 b_uh로 정한다 (1e-3 배를 더함).
-        참고: Deshpande & Karypis (2004) Item-based top-N recommendation algorithms. ACM TOIS.
+    Top-N score (rank_score)
+        In rating prediction most candidates share no neighbors with the user and tie at b_uh, so a separate ranking score is used.
+        score(u, h) = Σ_{j∈I_u} cos_co(h, j)   (sum of co-visit similarities to the hotels the user visited)
+            cos_co(i, j) = n_ij / sqrt(n_i · n_j)   only the top k kept per hotel
+        Ties are broken by b_uh (adding 1e-3 times it).
+        Reference: Deshpande & Karypis (2004) Item-based top-N recommendation algorithms. ACM TOIS.
     """
 
     def __init__(self, k=2000, shrink=100.0, damp=0.03, center="baseline", block=500, user_batch=500):
@@ -139,23 +139,23 @@ class ItemKNN:
             cnt = np.bincount(u, minlength=n_users)
             self.mu_u = np.bincount(u, r, n_users) / np.maximum(cnt, 1)
         res = (r - self._base(u, i)).astype(np.float32)
-        # scipy.sparse.csr_matrix((값, (행, 열)), shape): 0이 대부분인 행렬을 0이 아닌 값만 저장 (CSR 형식)
+        # scipy.sparse.csr_matrix((values, (rows, cols)), shape): store a mostly-zero matrix by its nonzero values only (CSR format)
         self.X = sp.csr_matrix((res, (u, i)), shape=(n_users, n_items), dtype=np.float32)
         self.B = sp.csr_matrix((np.ones_like(res), (u, i)), shape=(n_users, n_items), dtype=np.float32)
         Xt, Bt = self.X.T.tocsr(), self.B.T.tocsr()
         norm = np.sqrt(np.asarray(self.X.multiply(self.X).sum(0)).ravel())
-        n_item = np.asarray(self.B.sum(0)).ravel()                  # 호텔별 평가 수 n_i
+        n_item = np.asarray(self.B.sum(0)).ravel()                  # number of ratings per hotel n_i
 
         S_parts, C_parts = [], []
         kk = min(self.k, n_items - 1)
-        # 호텔 x 호텔 유사도 전체(약 4.7만 x 4.7만)는 메모리에 다 올릴 수 없으므로 block개 행씩 계산
+        # the full hotel x hotel similarity (about 47k x 47k) does not fit in memory, so compute block rows at a time
         for a in range(0, n_items, self.block):
             b = min(a + self.block, n_items)
             diag = (np.arange(b - a), np.arange(a, b))
-            num = (Xt[a:b] @ self.X).toarray()                      # 분자: Σ_u x_ui x_uj
-            co = (Bt[a:b] @ self.B).toarray()                       # 함께 평가한 사용자 수 n_ij
+            num = (Xt[a:b] @ self.X).toarray()                      # numerator: Σ_u x_ui x_uj
+            co = (Bt[a:b] @ self.B).toarray()                       # number of users who rated both, n_ij
             sim = num / (norm[a:b, None] * norm[None, :] + 1e-8) * (co / (co + self.shrink))
-            sim[diag] = 0                                           # 자기 자신 제외
+            sim[diag] = 0                                           # exclude itself
             S_parts.append(_top_k_rows(sim, a, kk))
             cos_co = co / (np.sqrt(n_item[a:b, None] * n_item[None, :]) + 1e-8)
             cos_co[diag] = 0
@@ -167,17 +167,17 @@ class ItemKNN:
 
         S, C = to_csr(S_parts), to_csr(C_parts)
         self.ST, self.CT = S.T.tocsr(), C.T.tocsr()
-        print(f"   ItemKNN({self.center}) 유사도 계산 {time.time() - t0:.0f}초, 이웃 수 평균 {S.nnz / n_items:.1f}")
+        print(f"   ItemKNN({self.center}) similarity computed in {time.time() - t0:.0f}s, mean neighbors {S.nnz / n_items:.1f}")
         return self
 
     def predict(self, u, i):
         out = np.empty(len(u))
         for users, sel, local in user_batches(u, self.user_batch):
-            # (X_u Sᵀ)[h] = Σ_j x_uj sim(h, j): 사용자가 평가한 이웃 호텔들의 가중합
+            # (X_u Sᵀ)[h] = Σ_j x_uj sim(h, j): weighted sum over the neighbor hotels the user rated
             num = (self.X[users] @ self.ST).toarray()
             den = (self.B[users] @ self.ST).toarray()
             n, d = num[local, i[sel]], den[local, i[sel]]
-            # np.divide(..., where=조건): 조건이 참인 칸만 나누고 나머지는 out 초기값(0) 유지 (0으로 나누기 방지)
+            # np.divide(..., where=cond): divide only where cond is true and keep the initial out value (0) elsewhere (avoids division by zero)
             out[sel] = np.divide(n, d + self.damp, out=np.zeros_like(n, dtype=float), where=d > 0)
         return np.clip(self._base(u, i) + out, 1, 5)
 
@@ -190,12 +190,12 @@ class ItemKNN:
 
 class BiasedMF:
     """
-    모델 기반 CF: 편향 포함 행렬분해
+    Model-based CF: biased matrix factorization
         r̂(u, i) = μ + b_u + b_i + p_u · q_i
-        손실 = Σ (r - r̂)^2 + reg (b_u^2 + b_i^2 + |p_u|^2 + |q_i|^2)     (MSE + L2 정규화)
-    SGD로 학습한다. 파이썬 반복문으로 한 건씩 갱신하면 너무 느려서 batch건을 한 번에 갱신하는
-    미니배치 SGD를 쓴다 (batch=1이면 수업의 SGD와 같음).
-    매 epoch마다 val RMSE를 재고, patience번 연속 나빠지면 멈추고 가장 좋았던 epoch의 파라미터를 쓴다.
+        loss = Σ (r - r̂)^2 + reg (b_u^2 + b_i^2 + |p_u|^2 + |q_i|^2)     (MSE + L2 regularization)
+    Trained with SGD. Updating one rating at a time in a Python loop is too slow, so mini-batch SGD
+    updates batch ratings at once (batch=1 is the same as the SGD from class).
+    val RMSE is measured every epoch; after patience consecutive worse epochs training stops and the best epoch's parameters are used.
     """
 
     def __init__(self, k=32, lr=0.01, reg=0.05, epochs=40, batch=256, patience=3, seed=SEED):
@@ -220,8 +220,8 @@ class BiasedMF:
                 idx = perm[s:s + self.batch]
                 uu, ii = u[idx], i[idx]
                 pu, qi = self.P[uu], self.Q[ii]
-                e = r[idx] - (self.mu + self.bu[uu] + self.bi[ii] + (pu * qi).sum(1))   # 오차
-                # 손실의 기울기 방향으로 한 걸음: θ ← θ + lr (e · ∂r̂/∂θ - reg · θ)
+                e = r[idx] - (self.mu + self.bu[uu] + self.bi[ii] + (pu * qi).sum(1))   # error
+                # one step along the loss gradient: θ ← θ + lr (e · ∂r̂/∂θ - reg · θ)
                 np.add.at(self.bu, uu, lr * (e - reg * self.bu[uu]))
                 np.add.at(self.bi, ii, lr * (e - reg * self.bi[ii]))
                 np.add.at(self.P, uu, lr * (e[:, None] * qi - reg * pu))
@@ -231,7 +231,7 @@ class BiasedMF:
                 h["val_rmse"] = rmse(val[2], np.clip(self._raw(val[0], val[1]), 1, 5))
             self.history.append(h)
             print(f"   MF epoch {ep:2d}  train {h['train_rmse']:.4f}"
-                  + (f"  val {h['val_rmse']:.4f}" if val is not None else "") + f"  ({time.time() - t0:.0f}초)")
+                  + (f"  val {h['val_rmse']:.4f}" if val is not None else "") + f"  ({time.time() - t0:.0f}s)")
             if val is None:
                 continue
             if h["val_rmse"] < best[0]:
@@ -251,13 +251,13 @@ class BiasedMF:
 
 class ContentBased:
     """
-    콘텐츠 기반 필터링
-        aspect 효용  util(u, h) = w_u0 + Σ_k w_uk · a_hk
-            w_u : 02단계의 사용자 aspect 중요도, a_h : 03단계의 호텔 aspect 평균
-            -> "사용자가 중요하게 여기는 aspect에서 점수가 높은 호텔"일수록 높게 예측
-        텍스트 유사도  sim(u, h) = cos(사용자 프로필, 호텔 TF-IDF)
-            사용자 프로필 = Σ_j (r_uj - μ_u) · TF-IDF_j  (높게 평가한 호텔의 단어는 +, 낮게 평가한 호텔의 단어는 -)
-        r̂(u, h) = util(u, h) + γ (sim(u, h) - s̄)      γ, s̄는 val 평점으로 최소제곱 추정 (fit_gamma)
+    Content-based filtering
+        aspect utility  util(u, h) = w_u0 + Σ_k w_uk · a_hk
+            w_u : user aspect importance from step 02, a_h : hotel aspect means from step 03
+            -> the higher a hotel scores on the aspects the user cares about, the higher the prediction
+        text similarity  sim(u, h) = cos(user profile, hotel TF-IDF)
+            user profile = Σ_j (r_uj - μ_u) · TF-IDF_j  (words of highly rated hotels +, words of low rated hotels -)
+        r̂(u, h) = util(u, h) + γ (sim(u, h) - s̄)      γ, s̄ estimated by least squares on the val ratings (fit_gamma)
     """
 
     def __init__(self, W, A, T, user_batch=500):
@@ -268,7 +268,7 @@ class ContentBased:
         cnt = np.bincount(u, minlength=n_users)
         mu_u = np.bincount(u, r, n_users) / np.maximum(cnt, 1)
         c = r - mu_u[u]
-        # 모든 평점이 같은 사용자는 가중치가 전부 0이 되므로 평가한 호텔을 같은 비중(1)으로 사용
+        # a user whose ratings are all equal would get all-zero weights, so their rated hotels get equal weight (1)
         flat = np.bincount(u, np.abs(c), n_users) == 0
         c = np.where(flat[u], 1.0, c)
         self.R = sp.csr_matrix((c.astype(np.float32), (u, i)), shape=(n_users, n_items))
@@ -280,12 +280,12 @@ class ContentBased:
     def text_sim(self, u, i):
         out = np.zeros(len(u))
         for users, sel, local in user_batches(u, self.user_batch):
-            P = (self.R[users] @ self.T).toarray()          # (묶음 사용자 수, 단어 수) 사용자 프로필
+            P = (self.R[users] @ self.T).toarray()          # (users in batch, terms) user profiles
             norm = np.linalg.norm(P, axis=1)
             norm[norm == 0] = 1
-            Th = self.T[i[sel]]                             # 대상 호텔들의 TF-IDF (희소)
+            Th = self.T[i[sel]]                             # TF-IDF of the target hotels (sparse)
             row = np.repeat(np.arange(len(sel)), np.diff(Th.indptr))
-            # 희소 x 밀집 내적: 호텔 벡터의 0이 아닌 칸만 사용자 프로필에서 꺼내 곱한 뒤 행별로 합산
+            # sparse x dense dot product: take only the hotel vector's nonzero entries from the user profile, multiply and sum per row
             dot = np.bincount(row, Th.data * P[local[row], Th.indices], minlength=len(sel))
             out[sel] = dot / norm[local]
         return out
@@ -295,7 +295,7 @@ class ContentBased:
         self.s_mean = sim.mean()
         z = sim - self.s_mean
         self.gamma = float((z * (r - util)).sum() / (z * z).sum())
-        print(f"   ContentBased γ = {self.gamma:.3f} (텍스트 유사도 평균 {self.s_mean:.3f})")
+        print(f"   ContentBased γ = {self.gamma:.3f} (mean text similarity {self.s_mean:.3f})")
         return self
 
     def predict(self, u, i):

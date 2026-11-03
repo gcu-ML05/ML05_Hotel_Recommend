@@ -1,288 +1,288 @@
-# 모델링 파이프라인
+# Modeling pipeline
 
-전처리된 데이터(`data/processing/`)로 제안서의 네 가지 필터링 방법을 학습하고 평가합니다. 사용자의 aspect 선호와 여행자 페르소나를 추정하고, 다른 플랫폼(Booking.com)의 신규 사용자에게도 통하는지 검증합니다.
+Trains and evaluates the four filtering methods of the proposal on the preprocessed data (`data/processing/`). It estimates users' aspect preferences and traveler personas, and checks whether they also work for new users on another platform (Booking.com).
 
-| 제안서 | 구현 |
+| Proposal | Implementation |
 | --- | --- |
-| ① 메모리 기반 CF | Item-kNN (`models.ItemKNN`) |
-| ② 모델 기반 CF | 편향 포함 행렬분해, L2 정규화, SGD (`models.BiasedMF`) |
-| ③ 콘텐츠 기반 | 사용자 aspect 중요도 × 호텔 aspect 평균 + 리뷰 TF-IDF 유사도 (`models.ContentBased`) |
-| ④ 하이브리드 | 평점: λ · MF + (1 − λ) · 콘텐츠 기반 / 순위: λ · Item-kNN + (1 − λ) · 콘텐츠 기반 (사용자별 표준화 후) |
-| 선형회귀 · K-means | 사용자 aspect 중요도 추정, 여행자 페르소나 |
+| ① Memory-based CF | Item-kNN (`models.ItemKNN`) |
+| ② Model-based CF | biased matrix factorization, L2 regularization, SGD (`models.BiasedMF`) |
+| ③ Content-based | user aspect importance × hotel aspect means + review TF-IDF similarity (`models.ContentBased`) |
+| ④ Hybrid | rating: λ · MF + (1 − λ) · content-based / ranking: λ · Item-kNN + (1 − λ) · content-based (after per-user standardization) |
+| Linear regression · K-means | user aspect importance estimation, traveler personas |
 
-- **HotelRec (TripAdvisor)**: 모델 설계·학습·평가 (사용자별 최신 리뷰로 test)
-- **515K Hotel Reviews (Booking.com, Kaggle)**: 신규 사용자 일반화 테스트 (사용자 ID가 없어 CF 직접 평가는 불가)
+- **HotelRec (TripAdvisor)**: model design, training and evaluation (each user's latest review is the test)
+- **515K Hotel Reviews (Booking.com, Kaggle)**: new-user generalization test (no user IDs, so CF cannot be evaluated directly)
 
-## 1. 전체 흐름
+## 1. Overview
 
 ```text
 data/processing/hotelrec/
   │
-  ├─ 01_split ─────────────────── 학습/검증/테스트 분할
-  ├─ 02_user_aspect_weights ───── 회귀 기반 aspect 가중치, 페르소나
-  ├─ 03_hotel_features ────────── 호텔 aspect 평균, TF-IDF
-  ├─ 04_persona_deviation ─────── 편차 기반 사용자 선호(관대함·까다로움), 페르소나
-  ├─ 05_persona_tuning ────────── 04의 설정 선택과 test 평가
-  ├─ 06_train_evaluate ────────── 추천 모델 학습·평가 (models.py)
-  └─ 07_tune_itemknn (선택) ───── Item-kNN 설정 선택 근거
+  ├─ 01_split ─────────────────── train/validation/test split
+  ├─ 02_user_aspect_weights ───── regression-based aspect weights, personas
+  ├─ 03_hotel_features ────────── hotel aspect means, TF-IDF
+  ├─ 04_persona_deviation ─────── deviation-based user preferences (leniency, strictness), personas
+  ├─ 05_persona_tuning ────────── settings selection for 04 and test evaluation
+  ├─ 06_train_evaluate ────────── recommendation model training and evaluation (models.py)
+  └─ 07_tune_itemknn (optional) ─ evidence for the Item-kNN settings
 data/processing/kaggle/
-  ├─ 08_kaggle_generalization ─── 리뷰 aspect 언급으로 여행 유형별 선호 검증
-  ├─ 09_lexicon_audit ─────────── 키워드 사전 점검
-  ├─ 10_persona_lexicon_compare ─ 페르소나·키워드 사전 비교
-  └─ 11_kaggle_hotel_matching ─── 공통 호텔에서 예측 vs 실제 점수
+  ├─ 08_kaggle_generalization ─── checks trip-type preferences via aspect mentions in reviews
+  ├─ 09_lexicon_audit ─────────── keyword lexicon audit
+  ├─ 10_persona_lexicon_compare ─ persona and keyword lexicon comparison
+  └─ 11_kaggle_hotel_matching ─── predicted vs actual scores on shared hotels
 ```
 
-번호 순서대로 실행하면 각 단계가 필요한 입력을 앞 단계에서 받습니다. 중간 산출물은 `data/pipeline/`(Git 제외), 결과 표(csv)와 그림(png)은 `Pipeline/outputs/`에 저장되며, 결과 파일 이름 앞의 번호는 그것을 만든 스크립트 번호입니다.
+Run in numeric order and each step gets the inputs it needs from the previous ones. Intermediate artifacts go to `data/pipeline/` (excluded from Git), result tables (csv) and figures (png) to `Pipeline/outputs/`; the number in front of a result file name is the number of the script that made it.
 
-## 2. 준비
+## 2. Setup
 
-**라이브러리**: 저장소 루트의 `requirements`로 설치합니다 (파이프라인은 numpy, pandas, scikit-learn, matplotlib을 쓰고, scipy는 scikit-learn과 함께 설치됩니다).
+**Libraries**: install with `requirements` in the repository root (the pipeline uses numpy, pandas, scikit-learn and matplotlib; scipy is installed together with scikit-learn).
 
-**데이터**: 팀 Drive의 전처리 결과를 아래처럼 둡니다.
+**Data**: place the preprocessing results from the team Drive as below.
 
 ```text
 data/processing/hotelrec/  hotelrec_train.csv, hotelrec_partial.csv, hotel_map.csv, user_map.csv
 data/processing/kaggle/    kaggle_test.csv, hotel_meta_kaggle.csv
 ```
 
-> `hotel_map.csv`는 **46,747행** 버전이어야 합니다. 처음 공유된 162,023행 버전은 리뷰 데이터와 `hotel_id`가 맞지 않습니다. 이 경우 06의 같은 도시 평가가 자동으로 건너뛰어지고, 11의 호텔 매칭 결과도 틀립니다.
+> `hotel_map.csv` must be the **46,747-row** version. The 162,023-row version shared first does not match the `hotel_id`s of the review data. With it, the same-city evaluation in 06 is skipped automatically and the hotel matching in 11 is wrong.
 
-## 3. 실행
+## 3. Running
 
-`Pipeline/` 폴더에서 번호 순서대로 실행합니다. 전체 약 30분입니다.
+Run from the `Pipeline/` folder in numeric order. About 30 minutes in total.
 
 ```bash
 cd Pipeline
-python 01_split.py                    # 약 0.5분
-python 02_user_aspect_weights.py      # 약 2분
-python 03_hotel_features.py           # 약 4분
-python 04_persona_deviation.py        # 약 1분
-python 05_persona_tuning.py           # 약 0.5분
-python 06_train_evaluate.py           # 약 10분
-python 07_tune_itemknn.py             # 선택, 약 9분
-python 08_kaggle_generalization.py    # 약 0.5분
-python 09_lexicon_audit.py            # 약 1분
-python 10_persona_lexicon_compare.py  # 약 0.5분
-python 11_kaggle_hotel_matching.py    # 약 0.1분
+python 01_split.py                    # about 0.5 min
+python 02_user_aspect_weights.py      # about 2 min
+python 03_hotel_features.py           # about 4 min
+python 04_persona_deviation.py        # about 1 min
+python 05_persona_tuning.py           # about 0.5 min
+python 06_train_evaluate.py           # about 10 min
+python 07_tune_itemknn.py             # optional, about 9 min
+python 08_kaggle_generalization.py    # about 0.5 min
+python 09_lexicon_audit.py            # about 1 min
+python 10_persona_lexicon_compare.py  # about 0.5 min
+python 11_kaggle_hotel_matching.py    # about 0.1 min
 ```
 
-`06_train_evaluate.py`와 `04_persona_deviation.py`는 옵션으로 설정을 바꿀 수 있습니다 (`python 06_train_evaluate.py -h`).
+`06_train_evaluate.py` and `04_persona_deviation.py` take options to change their settings (`python 06_train_evaluate.py -h`).
 
-## 4. 파일 구성
+## 4. Files
 
-| 파일 | 역할 | 입력 (앞 단계) | 주요 출력 |
+| File | Role | Input (earlier steps) | Main outputs |
 | --- | --- | --- | --- |
-| `common.py` | 경로, 데이터 로드, RMSE/MAE, HR@k/NDCG@k, Top-N 후보 생성 | – | – |
-| `models.py` | 추천 모델 (같은 `fit` / `predict` 인터페이스) | – | – |
-| `01_split.py` | 사용자별 시간 순 분할 | 전처리 결과 | `01_split_summary.csv` |
-| `02_user_aspect_weights.py` | 회귀 기반 aspect 가중치, 페르소나 | 01 | `02_*.csv`, `figures/02_*.png` |
-| `03_hotel_features.py` | 호텔 aspect 평균, 호텔 TF-IDF | 01 | `03_hotel_top_terms.csv` |
-| `04_persona_deviation.py` | 편차 기반 관대함·까다로움, 페르소나 | 01, 02, 03 | `04_*.csv`, `figures/04_*.png` |
-| `05_persona_tuning.py` | 04의 축소 강도·관대함 계수·K 선택, test 평가 | 01~04 | `05_*.csv`, `figures/05_*.png` |
-| `06_train_evaluate.py` | 추천 모델 학습, 평점 예측·Top-N 평가, 편차 기반 선호 연결, 평점·순위 하이브리드 | 01, 02, 03, 05 | `06_*.csv`, `figures/06_*.png` |
-| `07_tune_itemknn.py` | Item-kNN 설정 비교 (선택) | 01 | `07_itemknn_tuning.csv` |
-| `08_kaggle_generalization.py` | Kaggle 리뷰의 aspect 언급 분석, 키워드 사전(`LEXICON`) | 02 | `08_*.csv`, `figures/08_*.png` |
-| `09_lexicon_audit.py` | 키워드별 빈도·동시 언급·민감도 점검 | 08의 사전 | `09_*.csv` |
-| `10_persona_lexicon_compare.py` | 페르소나 3종 × 사전 2종 비교, 사전 강건성 | 02, 04, 05, 08 | `10_*.csv` |
-| `11_kaggle_hotel_matching.py` | HotelRec·Kaggle 공통 호텔에서 예측 vs 실제 점수 | 02, 03, 06 | `11_*.csv`, `figures/11_*.png` |
+| `common.py` | paths, data loading, RMSE/MAE, HR@k/NDCG@k, Top-N candidate generation | – | – |
+| `models.py` | recommendation models (same `fit` / `predict` interface) | – | – |
+| `01_split.py` | per-user chronological split | preprocessing results | `01_split_summary.csv` |
+| `02_user_aspect_weights.py` | regression-based aspect weights, personas | 01 | `02_*.csv`, `figures/02_*.png` |
+| `03_hotel_features.py` | hotel aspect means, hotel TF-IDF | 01 | `03_hotel_top_terms.csv` |
+| `04_persona_deviation.py` | deviation-based leniency and strictness, personas | 01, 02, 03 | `04_*.csv`, `figures/04_*.png` |
+| `05_persona_tuning.py` | selection of 04's shrinkage strength, leniency coefficients and K; test evaluation | 01~04 | `05_*.csv`, `figures/05_*.png` |
+| `06_train_evaluate.py` | model training, rating prediction and Top-N evaluation, plugging in the deviation-based preferences, rating and ranking hybrids | 01, 02, 03, 05 | `06_*.csv`, `figures/06_*.png` |
+| `07_tune_itemknn.py` | Item-kNN settings comparison (optional) | 01 | `07_itemknn_tuning.csv` |
+| `08_kaggle_generalization.py` | aspect mention analysis of Kaggle reviews, keyword lexicon (`LEXICON`) | 02 | `08_*.csv`, `figures/08_*.png` |
+| `09_lexicon_audit.py` | per-keyword frequency, co-mention and sensitivity audit | 08's lexicon | `09_*.csv` |
+| `10_persona_lexicon_compare.py` | 3 persona sets × 2 lexicons comparison, lexicon robustness | 02, 04, 05, 08 | `10_*.csv` |
+| `11_kaggle_hotel_matching.py` | predicted vs actual scores on hotels shared by HotelRec and Kaggle | 02, 03, 06 | `11_*.csv`, `figures/11_*.png` |
 
-## 5. 단계별 방법
+## 5. Methods by step
 
-### 01 분할
-train(세부 평점 완전)과 partial을 합친 전체 리뷰에서 **사용자마다 가장 최근 리뷰는 test, 그 직전 리뷰는 val, 나머지는 train**으로 나눕니다. 미래 리뷰로 과거를 맞히는 시간 누수가 없습니다. 날짜가 월 단위라 같은 달의 리뷰는 시드 42 난수로 순서를 정합니다.
+### 01 Split
+From all reviews (train with complete sub-ratings plus partial), **each user's most recent review goes to test, the one before it to val, and the rest to train**. There is no time leakage of predicting the past from future reviews. Dates are monthly, so reviews in the same month are ordered with seed-42 random numbers.
 
-### 02 회귀 기반 aspect 가중치
-- 전역 선형회귀: `rating ≈ w0 + Σ w_k · aspect_k` (세부 평점이 모두 있는 train 리뷰)
-- 사용자별 Ridge: 사용자당 완전 리뷰가 평균 3.7건뿐이라, 계수를 0이 아닌 **전역 가중치 쪽으로 당기는** 정규화를 씁니다. 강도 λ는 val로 고릅니다.
-- 페르소나: 가중치를 중요도 비율로 바꿔 K-means로 군집화합니다 (K는 실루엣 점수로 선택).
+### 02 Regression-based aspect weights
+- Global linear regression: `rating ≈ w0 + Σ w_k · aspect_k` (train reviews with all sub-ratings)
+- Per-user Ridge: users have only 3.7 complete reviews on average, so the regularization **pulls the coefficients toward the global weights** instead of toward 0. The strength λ is chosen on val.
+- Personas: the weights are turned into importance shares and clustered with K-means (K chosen by silhouette score).
 
-### 03 호텔 특징
-- 호텔 aspect 평균: train 리뷰의 세부 평점을 aspect별로 평균하고, 리뷰가 적은 호텔은 전체 평균 쪽으로 축소합니다.
-- 호텔 TF-IDF: train 리뷰의 제목과 본문을 호텔별로 모아 TF-IDF를 계산하고, 호텔마다 상위 100개 단어만 남깁니다.
+### 03 Hotel features
+- Hotel aspect means: the sub-ratings of train reviews averaged per aspect; hotels with few reviews are shrunk toward the overall mean.
+- Hotel TF-IDF: the titles and texts of train reviews are pooled per hotel to compute TF-IDF, keeping only the top 100 terms per hotel.
 
-### 04·05 편차 기반 사용자 선호와 페르소나
-02의 회귀 계수는 리뷰가 적어 사용자마다 구별되지 않았습니다. 그래서 계수를 추정하는 대신, 사용자가 준 aspect 점수가 **그 호텔의 평균 aspect 점수보다 얼마나 높거나 낮은지**를 평균합니다.
-- **관대함** L_u: 모든 aspect에서 호텔 평균보다 후하게(+) 또는 박하게(−) 주는 정도
-- **까다로움**: 관대함을 뺀 aspect별 상대 편차의 부호를 바꾼 값. 클수록 그 aspect를 다른 사람보다 박하게 평가합니다. 리뷰가 적은 aspect는 0 쪽으로 축소(M)합니다.
-- 페르소나: 까다로움 벡터를 K-means로 군집화합니다 (예: "서비스 깐깐형").
-- 검증: val/test 리뷰의 aspect 점수를 `호텔 평균 + 관대함 (+ 페르소나 또는 개인 까다로움)`으로 예측한 RMSE. 05는 축소 강도 M, aspect별 관대함 계수 β, K를 val로 고르고 test로 최종 보고합니다.
+### 04·05 Deviation-based user preferences and personas
+02's regression coefficients did not distinguish users because there are too few reviews. So instead of estimating coefficients, this averages **how much higher or lower the user's aspect scores are than that hotel's mean aspect scores**.
+- **Leniency** L_u: how much more generously (+) or harshly (−) the user scores than the hotel mean across all aspects
+- **Strictness**: the sign-flipped per-aspect relative deviation after removing leniency. The larger it is, the more harshly the user rates that aspect compared with others. Aspects with few reviews are shrunk toward 0 (M).
+- Personas: the strictness vectors are clustered with K-means (e.g. "Strict on service").
+- Validation: RMSE of predicting the aspect scores of val/test reviews as `hotel mean + leniency (+ persona or personal strictness)`. 05 chooses the shrinkage strength M, per-aspect leniency coefficients β and K on val, and reports the final test result.
 
-### 06 추천 모델과 평가
+### 06 Recommendation models and evaluation
 
-| 모델 | 방법 |
+| Model | Method |
 | --- | --- |
-| Popularity | 리뷰 수가 많은 호텔 (기준선) |
-| PersonaPopularity (회귀 / 편차) | 같은 페르소나(02의 K=3 / 05의 K=2)가 4점 이상 준 호텔 (제안서의 군집 기준선) |
+| Popularity | hotels with the most reviews (baseline) |
+| PersonaPopularity (regression / deviation) | hotels rated 4+ by the same persona (02's K=3 / 05's K=2) (the proposal's cluster baseline) |
 | Baseline | μ + b_u + b_i |
-| ItemKNN | 평점 예측: 기준 예측(μ+b_u+b_i) + 이웃 호텔 잔차의 가중 평균 (KNNBaseline)<br>Top-N: 사용자가 다녀간 호텔들과의 공동 방문 유사도 합 |
-| MF | μ + b_u + b_i + p_u·q_i, MSE + L2, 미니배치 SGD, val 기준 조기 종료 |
-| Content | aspect 효용 (02의 사용자 가중치 × 호텔 aspect 평균) + γ × TF-IDF 코사인 유사도 |
-| Content (까다로움) | 04·05의 편차 기반 선호를 연결한 콘텐츠 기반. aspect 가중치를 사용자가 까다롭게 보는 aspect 쪽으로 기울이고(w_k ∝ 전역 가중치 × exp(τ · 까다로움)), 절편에 κ × 관대함을 더합니다. 까다로움은 개인 / 페르소나 평균 / 이력이 적은 사용자(train 5건 미만)만 페르소나 세 가지로 비교합니다 |
-| Hybrid-평점 (MF+Content) | λ · MF + (1 − λ) · Content(까다로움, 이력 적으면 페르소나). 둘 다 평점 척도라 그대로 합산, λ는 val RMSE로 선택 |
-| Hybrid-순위 (ItemKNN+Content) | λ · z(ItemKNN 공동 방문 점수) + (1 − λ) · z(Content(까다로움, 이력 적으면 페르소나)). z는 같은 사용자의 후보끼리 표준화(척도 맞춤), λ는 val NDCG@10으로 선택 |
+| ItemKNN | rating prediction: baseline prediction (μ+b_u+b_i) + weighted mean of the neighbor hotels' residuals (KNNBaseline)<br>Top-N: sum of co-visit similarities to the hotels the user has visited |
+| MF | μ + b_u + b_i + p_u·q_i, MSE + L2, mini-batch SGD, early stopping on val |
+| Content | aspect utility (02's user weights × hotel aspect means) + γ × TF-IDF cosine similarity |
+| Content (strictness) | content-based with the deviation-based preferences from 04·05 plugged in. The aspect weights are tilted toward the aspects the user is strict about (w_k ∝ global weight × exp(τ · strictness)) and κ × leniency is added to the intercept. Strictness is compared three ways: personal / persona mean / persona only for users with little history (fewer than 5 train reviews) |
+| Hybrid-rating (MF+Content) | λ · MF + (1 − λ) · Content(strictness, persona if few reviews). Both are on the rating scale and are summed as is; λ chosen by val RMSE |
+| Hybrid-ranking (ItemKNN+Content) | λ · z(ItemKNN co-visit score) + (1 − λ) · z(Content(strictness, persona if few reviews)). z standardizes among the same user's candidates (scale matching); λ chosen by val NDCG@10 |
 
-τ(까다로움 반영 강도)는 val NDCG@10, κ(관대함 계수)는 val 평점 잔차의 최소제곱으로 고릅니다 (`06_strictness_tau.csv`).
+τ (strength of the strictness tilt) is chosen by val NDCG@10, κ (leniency coefficient) by least squares on the val rating residuals (`06_strictness_tau.csv`).
 
-하이브리드를 평점용과 순위용으로 나눈 이유: MF와 콘텐츠 기반을 하나의 하이브리드로 두고 λ를 val NDCG@10으로 고르면, 두 모델 모두 순위에 약해 λ=0(콘텐츠만)이 선택됐습니다. 그래서 평점 예측은 MF와, 순위는 순위에 가장 강한 CF인 Item-kNN과 결합하고 각각의 목적 지표로 λ를 고릅니다 (`06_hybrid_lambda.csv`).
+Why the hybrid is split into a rating one and a ranking one: with a single MF + content-based hybrid and λ chosen by val NDCG@10, both models are weak at ranking and λ=0 (content only) was chosen. So rating prediction is combined with MF and ranking with Item-kNN, the CF that is strongest at ranking, and each λ is chosen by its own target metric (`06_hybrid_lambda.csv`).
 
-평가 지표:
-- **평점 예측**: 모든 사용자의 test 리뷰에 대한 RMSE, MAE
-- **Top-N**: 정답 호텔(test 리뷰의 호텔) 1개와 사용자가 평가하지 않은 후보를 섞어 HR@k, NDCG@k를 계산합니다.
-  - 무작위 후보: 전 세계 호텔 99개 (test 사용자 2만 명 표본)
-  - 같은 도시 후보: 정답과 같은 도시의 호텔 49개. "여행지를 정한 뒤 호텔 고르기"에 해당하며, 호텔이 50개 이상인 도시의 사용자만 평가됩니다.
+Evaluation metrics:
+- **Rating prediction**: RMSE and MAE on the test reviews of all users
+- **Top-N**: HR@k and NDCG@k with 1 correct hotel (the hotel of the test review) mixed with candidates the user has not rated.
+  - Random candidates: 99 hotels from anywhere in the world (sample of 20,000 test users)
+  - Same-city candidates: 49 hotels in the same city as the correct one. This matches "choosing a hotel after choosing the destination"; only users in cities with 50+ hotels are evaluated.
 
-07은 Item-kNN의 기준 예측 방식, 이웃 수 k, 축소 강도를 val로 비교해 06의 기본값(k=2000, shrink=100, damp=0.03)을 고른 근거를 남깁니다.
+07 compares Item-kNN's baseline prediction type, number of neighbors k and shrinkage strength on val, recording why 06's defaults (k=2000, shrink=100, damp=0.03) were chosen.
 
-### 08~10 Kaggle 텍스트 검증
-Kaggle 리뷰 1건을 신규 사용자 1명으로 봅니다. aspect별 키워드 사전(`08`의 `LEXICON`)으로 긍정·부정 리뷰에서 언급된 aspect를 찾습니다.
-- 08: 여행 유형별 aspect 언급 차이, HotelRec 페르소나와의 대응, HotelRec 가중치로 매긴 호텔 점수와 실제 점수의 상관
-- 09: 사전 점검. 키워드별 빈도, 같은 리뷰에서 두 aspect가 함께 잡히는 비율, 키워드를 하나씩 뺐을 때 결과가 바뀌는 정도
-- 10: 09의 점검을 반영한 수정 사전과 원본 사전, 회귀 기반·편차 기반 페르소나를 같은 지표로 비교하고, 사전을 바꿔도 결론이 유지되는지 확인
+### 08~10 Kaggle text validation
+Each Kaggle review is treated as one new user. A per-aspect keyword lexicon (`LEXICON` in `08`) finds the aspects mentioned in the positive and negative reviews.
+- 08: differences in aspect mentions by trip type, correspondence with the HotelRec personas, correlation of hotel scores from HotelRec weights with the actual scores
+- 09: lexicon audit. Frequency per keyword, how often two aspects are caught in the same review, and how much the results change when keywords are removed one at a time
+- 10: compares the revised lexicon (reflecting 09's audit) with the original, and the regression-based with the deviation-based personas, on the same metrics, and checks whether the conclusions hold when the lexicon changes
 
-### 11 Kaggle 호텔 매칭
-같은 도시 안에서 호텔명을 정규화해 두 데이터의 같은 호텔을 찾습니다. 정확히 일치하거나, 문자열 유사도가 0.9 이상인 경우만 인정합니다. 그다음 HotelRec 모델의 **신규 사용자 예측**(사용자 항 0)이 Booking.com 실제 점수와 얼마나 맞는지 평가합니다.
+### 11 Kaggle hotel matching
+Finds the same hotel in both datasets by normalizing hotel names within the same city. Only exact matches or string similarity of 0.9 or more are accepted. Then it evaluates how well the HotelRec models' **new-user predictions** (user terms 0) match the actual Booking.com scores.
 
-## 6. 주요 결과
+## 6. Main results
 
-시드 42 기준입니다. 전체 표는 `outputs/`에 있습니다.
+With seed 42. The full tables are in `outputs/`.
 
-**평점 예측 (06, test)**
+**Rating prediction (06, test)**
 
-| 모델 | RMSE | MAE |
+| Model | RMSE | MAE |
 | --- | --- | --- |
 | GlobalMean | 1.004 | 0.784 |
 | Baseline | 0.909 | 0.700 |
 | ItemKNN | 0.909 | 0.700 |
 | MF | 0.907 | **0.693** |
 | Content (aspect + text) | 0.952 | 0.745 |
-| **Hybrid-평점 (MF 0.8 + Content 0.2)** | **0.906** | 0.694 |
+| **Hybrid-rating (MF 0.8 + Content 0.2)** | **0.906** | 0.694 |
 
 **Top-N (06, test HR@10 / NDCG@10)**
 
-| 모델 | 무작위 후보 (1+99) | 같은 도시 후보 (1+49) |
+| Model | Random candidates (1+99) | Same-city candidates (1+49) |
 | --- | --- | --- |
 | **ItemKNN** | **0.349 / 0.211** | 0.392 / 0.191 |
-| Hybrid-순위 (ItemKNN 0.8 + Content 0.2) | 0.347 / **0.211** | 0.389 / 0.191 |
+| Hybrid-ranking (ItemKNN 0.8 + Content 0.2) | 0.347 / **0.211** | 0.389 / 0.191 |
 | Popularity | 0.328 / 0.176 | **0.479 / 0.255** |
 | Baseline | 0.146 / 0.073 | 0.312 / 0.152 |
 | Content (aspect + text) | 0.135 / 0.065 | 0.296 / 0.143 |
 | MF | 0.117 / 0.053 | 0.285 / 0.131 |
-| 무작위로 순위를 매길 때 | 0.100 | 0.200 |
+| Random ranking | 0.100 | 0.200 |
 
-**사용자 aspect 선호 (05, test 세부 평점 예측 RMSE)**
+**User aspect preferences (05, test sub-rating prediction RMSE)**
 
-| 예측 | RMSE |
+| Prediction | RMSE |
 | --- | --- |
-| 호텔 평균만 | 0.905 |
-| + 관대함 | 0.890 |
-| + aspect별 관대함 (β) | 0.878 |
-| + 페르소나 (K=2) | 0.878 |
-| **+ 개인 까다로움 (M=30)** | **0.877** |
+| hotel mean only | 0.905 |
+| + leniency | 0.890 |
+| + per-aspect leniency (β) | 0.878 |
+| + persona (K=2) | 0.878 |
+| **+ personal strictness (M=30)** | **0.877** |
 
-**편차 기반 선호의 추천 연결 (06, test, τ=160, κ=0.51)**
+**Plugging the deviation-based preferences into recommendation (06, test, τ=160, κ=0.51)**
 
-| 모델 | 평점 RMSE | 무작위 HR@5 / NDCG@10 | 같은 도시 NDCG@10 |
+| Model | Rating RMSE | Random HR@5 / NDCG@10 | Same-city NDCG@10 |
 | --- | --- | --- | --- |
 | Content (aspect + text) | 0.952 | 0.070 / 0.065 | 0.143 |
-| Content (까다로움, 개인) | 0.945 | 0.076 / 0.067 | 0.142 |
-| **Content (까다로움, 페르소나)** | **0.931** | 0.077 / 0.068 | **0.143** |
-| Content (까다로움, 이력 적으면 페르소나) | 0.939 | **0.078 / 0.068** | 0.142 |
-| PersonaPopularity (회귀, K=3) | – | 0.215 / 0.172 | 0.251 |
-| PersonaPopularity (편차, K=2) | – | 0.216 / 0.172 | 0.251 |
+| Content (strictness, personal) | 0.945 | 0.076 / 0.067 | 0.142 |
+| **Content (strictness, persona)** | **0.931** | 0.077 / 0.068 | **0.143** |
+| Content (strictness, persona if few reviews) | 0.939 | **0.078 / 0.068** | 0.142 |
+| PersonaPopularity (regression, K=3) | – | 0.215 / 0.172 | 0.251 |
+| PersonaPopularity (deviation, K=2) | – | 0.216 / 0.172 | 0.251 |
 
-**Kaggle 공통 호텔 505개 (11, 리뷰 203,215건): 신규 사용자 예측 vs 실제 점수**
+**505 hotels shared with Kaggle (11, 203,215 reviews): new-user prediction vs actual score**
 
-| 모델 | 리뷰 RMSE | 호텔 평균 점수와 상관 |
+| Model | Review RMSE | Correlation with hotel mean score |
 | --- | --- | --- |
 | GlobalMean | 0.812 | – |
 | MF (μ + b_i) | 0.784 | 0.743 |
 | Content (aspect) | 0.788 | 0.674 |
-| **Hybrid-평점 (λ=0.8)** | **0.782** | **0.743** |
+| **Hybrid-rating (λ=0.8)** | **0.782** | **0.743** |
 
-**해석**
-- 평점 예측은 MF가 가장 좋지만 Baseline과 차이가 작습니다. 사용자당 리뷰가 평균 7건이라 개인화로 얻을 정보가 적습니다.
-- Top-N에서는 ItemKNN(공동 방문)과 인기도가 가장 강합니다. 평점을 예측하는 모델(MF, Content)은 "어느 호텔에 갈지"를 맞히는 데 약합니다.
-- ItemKNN은 이력이 많은 사용자일수록 좋아지고(HR@10: 리뷰 3~4건 0.299 → 20건 이상 0.472), 콘텐츠 기반은 이력이 적은 사용자에서 상대적으로 낫습니다.
-- **회귀 기반 사용자 가중치(02)는 전역 가중치보다 낫지 않았고**, 페르소나 간 차이도 거의 없었습니다(중요도 비율 차이 약 0.003).
-- **편차 기반(04·05)에서는 관대함이 뚜렷한 신호입니다** (0.905 → 0.878). aspect별 개인 까다로움도 있지만 효과는 작고(−0.001), 페르소나는 예측에 거의 기여하지 않습니다(−0.0002). 대신 "서비스 깐깐형 (위치엔 관대)" 35%, "수면 깐깐형 (서비스엔 관대)" 65%처럼 해석할 수 있는 유형이 나옵니다.
-- **편차 기반 선호를 콘텐츠 기반 추천에 연결하면 소폭 좋아집니다.** 평점 RMSE는 0.952 → 0.931(주로 관대함 보정), 무작위 후보 HR@5는 0.070 → 0.078(+11%), NDCG@10은 0.065 → 0.068로 올랐습니다. 같은 도시 후보에서는 차이가 없습니다. 개인 까다로움보다 페르소나 평균 까다로움이 RMSE가 낮아, 개인 값에는 잡음이 많고 페르소나로 묶으면 안정적이라는 뜻입니다. 이력이 20건 이상인 사용자에서 HR@10이 0.110 → 0.119로 가장 크게 올랐습니다. 다만 MF·Baseline(0.907~0.909)보다는 여전히 RMSE가 높습니다.
-- **하이브리드는 목적별로 나누자 실제로 CF와 콘텐츠가 섞였습니다(두 하이브리드 모두 λ=0.8).** 평점 하이브리드는 test RMSE 0.906으로 MF(0.907)를 근소하게 넘는 평점 예측 최고 모델이고, Booking.com 신규 사용자 예측에서도 MF보다 약간 낫습니다(리뷰 RMSE 0.784 → 0.782). 순위 하이브리드는 val에서 ItemKNN 단독보다 좋았지만(NDCG@10 0.2283 → 0.2297), test에서는 ItemKNN과 같은 수준입니다(무작위 NDCG@10 0.211, 같은 도시 0.191). 순위에서는 콘텐츠 기반이 ItemKNN에 더해 주는 정보가 거의 없습니다.
-- PersonaPopularity는 회귀 기반·편차 기반 모두 인기도(0.328)보다 약간 낮습니다. 페르소나가 2~3개뿐이라 군집별 인기 호텔이 전체 인기 호텔과 거의 같습니다.
-- **aspect 가중치는 플랫폼을 넘어 일반화됩니다.** HotelRec 전역 가중치로 매긴 Booking.com 호텔 점수는 동일 가중보다 실제 점수와 상관이 높습니다(0.274 → 0.301).
-- Booking.com 리뷰에서도 여행 유형별 선호 차이가 보입니다. 가족 여행객은 location을, 출장객은 rooms·sleep_quality·value를 더 언급합니다. 키워드 사전을 수정해도 여행 유형별 최다 언급 aspect는 8개 그룹 중 7개, 최소 언급 aspect는 8개 모두 유지됩니다(10).
-- 여행 유형과 페르소나의 연관은 회귀 기반·편차 기반 모두 약합니다(Cramér's V 0.03~0.05).
-- **HotelRec에서 배운 호텔 점수는 Booking.com 호텔 평균 점수와 상관 0.74**로, 다른 플랫폼의 신규 사용자에게도 호텔 수준의 예측은 통합니다.
+**Interpretation**
+- MF is best at rating prediction, but the gap to Baseline is small. Users have 7 reviews on average, so there is little information to gain from personalization.
+- In Top-N, ItemKNN (co-visits) and popularity are strongest. Models that predict ratings (MF, Content) are weak at guessing "which hotel the user will go to".
+- ItemKNN improves for users with more history (HR@10: 0.299 with 3~4 reviews → 0.472 with 20+), while content-based does relatively better for users with little history.
+- **The regression-based user weights (02) were no better than the global weights**, and the personas barely differed (importance share difference about 0.003).
+- **In the deviation-based approach (04·05), leniency is a clear signal** (0.905 → 0.878). Per-aspect personal strictness exists but its effect is small (−0.001), and the personas contribute almost nothing to prediction (−0.0002). In return they give interpretable types such as "Strict on service (lenient on location)" 35% and "Strict on sleep (lenient on service)" 65%.
+- **Plugging the deviation-based preferences into content-based recommendation helps a little.** Rating RMSE went 0.952 → 0.931 (mostly the leniency correction), random-candidate HR@5 0.070 → 0.078 (+11%), NDCG@10 0.065 → 0.068. There is no difference on same-city candidates. The persona-mean strictness has a lower RMSE than personal strictness, meaning the personal values are noisy and grouping by persona stabilizes them. The largest gain was for users with 20+ reviews, HR@10 0.110 → 0.119. Still, the RMSE stays higher than MF and Baseline (0.907~0.909).
+- **Once split by purpose, the hybrids actually mix CF and content (λ=0.8 for both).** The rating hybrid, with test RMSE 0.906, edges past MF (0.907) as the best rating predictor, and is also slightly better than MF for Booking.com new-user prediction (review RMSE 0.784 → 0.782). The ranking hybrid beat ItemKNN alone on val (NDCG@10 0.2283 → 0.2297) but is on par with ItemKNN on test (random NDCG@10 0.211, same city 0.191). For ranking, content-based adds almost no information on top of ItemKNN.
+- PersonaPopularity, both regression-based and deviation-based, is slightly below popularity (0.328). With only 2~3 personas, the popular hotels per cluster are almost the same as the overall popular hotels.
+- **The aspect weights generalize across platforms.** Booking.com hotel scores from the HotelRec global weights correlate more with the actual scores than equal weights do (0.274 → 0.301).
+- Booking.com reviews also show preference differences by trip type. Families mention location more; business travelers mention rooms, sleep_quality and value more. With the revised keyword lexicon, the most-mentioned aspect per trip type stays the same in 7 of 8 groups and the least-mentioned in all 8 (10).
+- The association between trip type and persona is weak for both the regression-based and deviation-based personas (Cramér's V 0.03~0.05).
+- **The hotel scores learned on HotelRec correlate 0.74 with the Booking.com hotel mean scores**, so hotel-level prediction works even for new users on another platform.
 
-## 7. 개선 과정
+## 7. How the methods were improved
 
-처음 시도한 방법에서 어떤 문제가 보였고, 어떻게 바꿔 지금 값에 이르렀는지 정리했습니다. 설정은 모두 val로 고르고 test는 따로 보고했습니다.
+What problems showed up with the first approaches, and how they were changed to reach the current values. All settings were chosen on val; test was reported separately.
 
-**① 데이터 매핑 (전처리)**
+**① Data mapping (preprocessing)**
 
-| 단계 | 내용 | 결과 |
+| Stage | What | Result |
 | --- | --- | --- |
-| 처음 | 팀 Drive의 `hotel_map.csv`(162,023행) 사용 | 리뷰 데이터의 호텔 46,747개와 행 수부터 다름. 도시명이 그 호텔 리뷰에 나오는 비율 **3.9%** (무작위 수준) |
-| 원인 | 샘플링 전 단계의 다른 실행에서 나온 매핑 | `user_map.csv`도 없어 검증 스크립트를 돌릴 수 없음 |
-| 개선 | 원본 `HotelRec.txt`로 전처리 코드를 다시 실행 | train/partial이 공유 파일과 **바이트 단위로 동일** → 매핑 2개만 교체 |
-| 현재 | 46,747행 `hotel_map.csv`, 130,036행 `user_map.csv` | 도시명 일치 **87.9%**, 검증 **24/24 PASS**. 같은 도시 평가(06)와 Kaggle 매칭(11)이 가능해짐 |
+| First | used `hotel_map.csv` (162,023 rows) from the team Drive | the row count already differs from the 46,747 hotels in the review data. The city name appears in that hotel's reviews only **3.9%** of the time (random level) |
+| Cause | a mapping from a different run, before the sampling step | `user_map.csv` was also missing, so the validation script could not run |
+| Fix | reran the preprocessing code on the original `HotelRec.txt` | train/partial **byte-identical** to the shared files → only the 2 mappings replaced |
+| Now | 46,747-row `hotel_map.csv`, 130,036-row `user_map.csv` | city name match **87.9%**, validation **24/24 PASS**. The same-city evaluation (06) and Kaggle matching (11) became possible |
 
-**② Top-N 평가 방식 (06)**
+**② Top-N evaluation (06)**
 
-| 단계 | 내용 | 결과 |
+| Stage | What | Result |
 | --- | --- | --- |
-| 처음 | 정답 1개 + 전 세계 무작위 호텔 99개 | 인기도 기준선이 HR@10 **0.328**로, 당시 모든 개인화 모델(MF 0.117, 콘텐츠 0.135)의 2배 이상 |
-| 원인 | 무작위 후보는 대부분 다른 지역의 비인기 호텔이라 인기도만으로 쉽게 구별됨 | 제안서의 "같은 지역 안에서 호텔 고르기" 상황과도 다름 |
-| 개선 | ①에서 매핑을 고친 뒤 **같은 도시 후보**(1+49) 평가 추가 | 호텔 50개 이상인 도시의 사용자 4,975명 |
-| 현재 | 두 방식을 함께 보고 | 같은 도시에서도 인기도가 가장 강함(0.479), 그다음 ItemKNN(0.392) |
+| First | 1 correct hotel + 99 random hotels from around the world | the popularity baseline reached HR@10 **0.328**, more than twice every personalized model at the time (MF 0.117, content 0.135) |
+| Cause | random candidates are mostly unpopular hotels in other regions, easy to tell apart by popularity alone | also differs from the proposal's setting of "choosing a hotel within the same region" |
+| Fix | after fixing the mapping in ①, added the **same-city candidates** (1+49) evaluation | 4,975 users in cities with 50+ hotels |
+| Now | both are reported | popularity is strongest in the same city too (0.479), then ItemKNN (0.392) |
 
-**③ 메모리 기반 CF: Item-kNN (06, 07)**
+**③ Memory-based CF: Item-kNN (06, 07)**
 
-| 단계 | 설정 | val RMSE | val HR@10 | 비고 |
+| Stage | Setting | val RMSE | val HR@10 | Note |
 | --- | --- | --- | --- | --- |
-| 처음 | adjusted cosine (사용자 평균 기준, 제안서 방식), k=50 | 1.012 | 0.049 | 평균 예측(0.974)보다 나쁨 |
-| 개선 1 | 기준 예측을 μ+b_u+b_i로 (KNNBaseline), 축소 강화 | **0.877** | 0.157 | 이웃이 없을 때 호텔 효과를 반영 |
-| 개선 2 | 순위용 점수를 따로 둠: 사용자가 다녀간 호텔들과의 공동 방문 유사도 합 | 0.877 | 0.216 | 평점 예측값은 후보 대부분이 동점이라 순위를 못 매김 |
-| 개선 3 | 이웃 수 k = 50 → 200 → 500 → **2000** | 0.877 | 0.280 → 0.321 → **0.371** | 이웃이 사용자 이력과 겹치는 비율 7.4% → 22.7% |
-| 현재 (test) | 개선 3 설정 | RMSE 1.034 → **0.909** | HR@10 0.035 → **0.349** | 무작위 후보에서 인기도(0.328)를 처음으로 넘음 |
+| First | adjusted cosine (user-mean baseline, as in the proposal), k=50 | 1.012 | 0.049 | worse than predicting the mean (0.974) |
+| Fix 1 | baseline prediction μ+b_u+b_i (KNNBaseline), stronger shrinkage | **0.877** | 0.157 | reflects the hotel effect when there are no neighbors |
+| Fix 2 | separate ranking score: sum of co-visit similarities to the hotels the user has visited | 0.877 | 0.216 | the rating predictions tie for most candidates and cannot rank them |
+| Fix 3 | number of neighbors k = 50 → 200 → 500 → **2000** | 0.877 | 0.280 → 0.321 → **0.371** | share of neighbors overlapping with the user's history 7.4% → 22.7% |
+| Now (test) | Fix 3 setting | RMSE 1.034 → **0.909** | HR@10 0.035 → **0.349** | beats popularity (0.328) on random candidates for the first time |
 
-**④ 사용자 aspect 선호와 페르소나 (02, 04, 05, 06)**
+**④ User aspect preferences and personas (02, 04, 05, 06)**
 
-| 단계 | 방법 | 결과 |
+| Stage | Method | Result |
 | --- | --- | --- |
-| 처음 (02) | 선형회귀로 사용자별 aspect 가중치 추정 (전역 가중치로 축소하는 Ridge), K-means 페르소나 | 개인화를 강하게 할수록 val 오차가 커짐(λ=10: 0.515, 전역: 0.457). 선택된 λ=1000에서 개인 가중치 ≈ 전역 가중치, 페르소나 3개의 차이 약 **0.003** |
-| 원인 | 사용자당 세부 평점 완전 리뷰가 평균 3.7건뿐이고, aspect끼리 상관이 높음 | 7개 계수를 사용자마다 추정하기에 데이터가 부족 |
-| 개선 1 (04) | 회귀 대신 **호텔 평균 대비 편차**를 평균: 관대함 + aspect별 까다로움 | test 세부 평점 RMSE 0.905(호텔 평균) → 0.890(+관대함). 개인 까다로움을 더하면 오히려 0.896으로 나빠짐 |
-| 개선 2 (05) | 까다로움 축소 강도 M=3 → **30**, aspect별 관대함 계수 β, K 비교 | 0.878(+β 관대함) → **0.877**(+개인 까다로움). 해석 가능한 페르소나 2개: 서비스 깐깐형 35%, 수면 깐깐형 65% |
-| 개선 3 (06) | 까다로움을 콘텐츠 기반 추천에 연결 (τ 후보 0~80 → 최적이 경계라 0~320으로 확장 → **τ=160**) | 콘텐츠 기반 RMSE 0.952 → **0.931**, 무작위 HR@5 0.070 → **0.078** |
-| 현재 | 편차 기반 선호가 콘텐츠 기반·하이브리드·PersonaPopularity에 연결됨 | 개선은 일관되지만 작음. 같은 도시 후보에서는 차이 없음 |
+| First (02) | per-user aspect weights from linear regression (Ridge shrinking toward the global weights), K-means personas | the stronger the personalization, the larger the val error (λ=10: 0.515, global: 0.457). At the chosen λ=1000 the personal weights ≈ global weights, and the 3 personas differ by about **0.003** |
+| Cause | users have only 3.7 reviews with complete sub-ratings on average, and the aspects are highly correlated | not enough data to estimate 7 coefficients per user |
+| Fix 1 (04) | instead of regression, average the **deviation from the hotel mean**: leniency + per-aspect strictness | test sub-rating RMSE 0.905 (hotel mean) → 0.890 (+leniency). Adding personal strictness made it worse, 0.896 |
+| Fix 2 (05) | strictness shrinkage strength M=3 → **30**, per-aspect leniency coefficients β, K comparison | 0.878 (+β leniency) → **0.877** (+personal strictness). 2 interpretable personas: Strict on service 35%, Strict on sleep 65% |
+| Fix 3 (06) | plug strictness into content-based recommendation (τ candidates 0~80 → optimum at the boundary, extended to 0~320 → **τ=160**) | content-based RMSE 0.952 → **0.931**, random HR@5 0.070 → **0.078** |
+| Now | the deviation-based preferences feed content-based, the hybrids and PersonaPopularity | consistent but small improvements. No difference on same-city candidates |
 
-**⑤ 하이브리드 (06, 11)**
+**⑤ Hybrid (06, 11)**
 
-| 단계 | 방법 | 결과 |
+| Stage | Method | Result |
 | --- | --- | --- |
-| 처음 | λ · MF + (1 − λ) · 콘텐츠, λ는 val NDCG@10으로 선택 | **λ=0** 선택 → 하이브리드가 콘텐츠 기반과 같아짐 |
-| 원인 | MF와 콘텐츠 모두 순위에 약해, 순위 지표로 고르면 섞을 이유가 없음 | 같은 표에서 val RMSE는 MF를 90% 섞을 때(0.8757) MF 단독(0.8760)보다 낮았음 |
-| 개선 | 목적별로 분리: **평점** = MF + 콘텐츠 (val RMSE로 λ), **순위** = ItemKNN + 콘텐츠 (사용자별 표준화 후, val NDCG@10로 λ) | 두 하이브리드 모두 **λ=0.8**로 실제로 섞임 |
-| 현재 (test) | 평점 하이브리드 / 순위 하이브리드 | 평점 RMSE **0.906** (MF 0.907, 최고), Kaggle 리뷰 RMSE 0.784 → 0.782. 순위는 NDCG@10 0.211로 ItemKNN 단독과 같은 수준 |
+| First | λ · MF + (1 − λ) · content, λ chosen by val NDCG@10 | **λ=0** chosen → the hybrid equals content-based |
+| Cause | MF and content are both weak at ranking, so choosing by a ranking metric gives no reason to mix | in the same table, val RMSE with 90% MF (0.8757) was lower than MF alone (0.8760) |
+| Fix | split by purpose: **rating** = MF + content (λ by val RMSE), **ranking** = ItemKNN + content (after per-user standardization, λ by val NDCG@10) | both hybrids actually mix at **λ=0.8** |
+| Now (test) | rating hybrid / ranking hybrid | rating RMSE **0.906** (MF 0.907, best), Kaggle review RMSE 0.784 → 0.782. Ranking NDCG@10 0.211, on par with ItemKNN alone |
 
-**⑥ Kaggle 일반화 검증 (08~11)**
+**⑥ Kaggle generalization check (08~11)**
 
-| 단계 | 방법 | 결과 |
+| Stage | Method | Result |
 | --- | --- | --- |
-| 처음 (08) | 수작업 키워드 사전으로 리뷰의 aspect 언급을 세고, 여행 유형·페르소나와 비교 | 여행 유형별 차이는 뚜렷(가족→location, 출장→rooms·sleep·value)하지만 페르소나와의 연관은 약함(Cramér's V 0.034) |
-| 점검 (09) | 키워드별 빈도·민감도 | `location`, `clean` 두 단어가 각 aspect 언급의 약 79%를 차지, 빼면 결과가 최대 4.7%p 바뀜 |
-| 개선 (10) | 수정 사전(제거 4개, 추가 21개)과 편차 기반 페르소나로 재비교 | 여행 유형별 최다 언급 aspect 8개 중 7개, 최소 언급 8개 모두 유지. 페르소나 연관은 여전히 약함(V 0.03~0.05) |
-| 추가 (11) | 텍스트 비교만으로는 모델의 일반화를 직접 볼 수 없어, 두 데이터의 **같은 호텔**을 매칭 | 505개 호텔에서 HotelRec 호텔 점수와 Booking.com 호텔 평균의 상관 **0.74** |
+| First (08) | count aspect mentions in reviews with a hand-made keyword lexicon and compare with trip types and personas | clear differences by trip type (family → location, business → rooms·sleep·value) but a weak association with personas (Cramér's V 0.034) |
+| Audit (09) | frequency and sensitivity per keyword | the two words `location` and `clean` account for about 79% of their aspects' mentions; removing one changes the result by up to 4.7pp |
+| Fix (10) | re-compare with the revised lexicon (4 removed, 21 added) and the deviation-based personas | the most-mentioned aspect per trip type kept in 7 of 8 groups, the least-mentioned in all 8. The persona association is still weak (V 0.03~0.05) |
+| Extra (11) | text comparison alone cannot show the models' generalization directly, so the **same hotels** in both datasets were matched | on 505 hotels, the HotelRec hotel scores correlate **0.74** with the Booking.com hotel means |
 
-## 8. 한계와 남은 과제
+## 8. Limitations and remaining work
 
-- **하이브리드의 효과**: 평점 하이브리드의 개선은 0.001 수준이고, 순위 하이브리드는 test에서 ItemKNN 단독과 차이가 없습니다. 같은 도시 후보에서는 여전히 인기도가 가장 강해, 인기도를 함께 결합하는 방안이 남아 있습니다.
-- **페르소나 활용**: 편차 기반 선호는 06의 콘텐츠 기반·하이브리드·PersonaPopularity에 연결되어 있지만 개선 폭이 작습니다. τ=160은 사용자가 가장 까다롭게 보는 aspect 하나에 가중치의 약 89%를 몰아주는 강한 설정이라, 해석할 때 "가장 깐깐한 aspect 위주로 호텔을 고른다"는 뜻으로 읽어야 합니다. 11의 Kaggle 신규 사용자 예측에는 사용자 이력이 없어 연결하지 않았습니다.
-- **평가 범위**: 같은 도시 평가는 대도시 사용자(표본의 25%)만 포함합니다. Kaggle 매칭은 6개 유럽 도시 505개 호텔에 한정됩니다.
-- **수작업 규칙**: aspect 키워드 사전(08, 수정안은 10)과 호텔명 매칭 규칙(11)은 직접 정한 것입니다. 매칭 목록은 `outputs/11_matched_hotels.csv`에서 확인할 수 있습니다.
-- **편차의 기준**: 04의 호텔 평균에는 사용자 자신의 train 리뷰도 포함되어, 리뷰가 적은 호텔에서는 편차가 약간 작게 잡힙니다.
+- **Effect of the hybrids**: the rating hybrid improves by about 0.001, and the ranking hybrid does not differ from ItemKNN alone on test. Popularity is still strongest on same-city candidates, so combining popularity as well remains an option.
+- **Use of personas**: the deviation-based preferences are plugged into 06's content-based model, the hybrids and PersonaPopularity, but the improvements are small. τ=160 is a strong setting that puts about 89% of the weight on the single aspect the user is strictest about, so it should be read as "choosing hotels mainly on the strictest aspect". They are not plugged into 11's Kaggle new-user prediction because there is no user history.
+- **Evaluation coverage**: the same-city evaluation covers only users in large cities (25% of the sample). The Kaggle matching is limited to 505 hotels in 6 European cities.
+- **Hand-made rules**: the aspect keyword lexicon (08, revised in 10) and the hotel name matching rules (11) were set by hand. The match list can be checked in `outputs/11_matched_hotels.csv`.
+- **Deviation baseline**: the hotel means in 04 include the user's own train reviews, so for hotels with few reviews the deviation comes out slightly smaller.
 
-## 9. 참고 문헌
+## 9. References
 
 - Antognini & Faltings (2020) HotelRec: a Novel Very Large-Scale Hotel Recommendation Dataset. LREC.
 - Sarwar et al. (2001) Item-based collaborative filtering recommendation algorithms. WWW.

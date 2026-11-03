@@ -1,28 +1,31 @@
 """
-2단계: 사용자별 aspect 중요도 추정 + 여행자 페르소나(K-means)
+Step 2: per-user aspect importance + traveler personas (K-means)
 
-(1) 전역 선형회귀
-    세부 평점이 6개 모두 있는 train 리뷰로  rating ≈ w0 + Σ_k w_k · aspect_k  를 적합한다.
-    w_k가 "전체 평점을 정할 때 aspect k가 차지하는 비중", 즉 평균적인 사용자의 aspect 중요도이다.
+(1) Global linear regression
+    Fit  rating ≈ w0 + Σ_k w_k · aspect_k  on train reviews that have all 6 sub-ratings.
+    w_k is "how much aspect k weighs in the overall rating", i.e. the aspect importance of an average user.
 
-(2) 사용자별 Ridge 회귀 (전역 가중치 쪽으로 축소)
-    사용자 u의 완전 리뷰가 평균 3~4건뿐이라 7개 계수를 사용자마다 따로 적합하면 과적합된다.
-    그래서 일반 Ridge(계수를 0 쪽으로 당김) 대신 계수를 전역 가중치 w_g 쪽으로 당기는 정규화를 쓴다.
+(2) Per-user Ridge regression (shrunk toward the global weights)
+    A user has only 3-4 complete reviews on average, so fitting 7 coefficients per user overfits.
+    Instead of plain Ridge (pulling coefficients toward 0) we pull them toward the global weights w_g.
         minimize  Σ_i (y_i - x_i·w_u)^2 + λ ||w_u - w_g||^2
-        해:       w_u = (X_uᵀX_u + λI)^(-1) (X_uᵀy_u + λ w_g)
-    리뷰가 적은 사용자는 w_g에 가깝고, 많을수록 자기 데이터에 맞춰진다. 완전 리뷰가 없는 사용자는 w_g를 쓴다.
-    λ는 val 리뷰(세부 평점 완전)의 rating을 그 리뷰의 aspect로 예측한 RMSE가 가장 작은 값으로 고른다.
+        solution: w_u = (X_uᵀX_u + λI)^(-1) (X_uᵀy_u + λ w_g)
+    Users with few reviews stay close to w_g; users with many reviews follow their own data.
+    Users with no complete review get w_g.
+    λ is the value with the lowest RMSE when predicting the rating of val reviews (all sub-ratings)
+    from their own aspects.
 
-(3) 페르소나
-    가중치를 중요도 비율(음수는 0으로 자르고 합이 1이 되게)로 바꿔 K-means로 군집화한다.
-    완전 리뷰가 MIN_FULL건 이상인 사용자로만 학습한다 (나머지는 거의 w_g 그대로라 군집을 왜곡하므로).
-    K는 실루엣 점수로 고르고, 학습 후 모든 사용자에게 가장 가까운 군집을 배정한다.
+(3) Personas
+    Weights are turned into importance shares (negatives clipped to 0, summing to 1) and clustered with K-means.
+    Only users with at least MIN_FULL complete reviews are used for fitting (the rest are almost w_g and
+    would distort the clusters). K is chosen by silhouette score; every user is then assigned to the
+    nearest cluster.
 
-출력: data/pipeline/user_weights.npy   (n_users, 7) = [w0, service, cleanliness, value, rooms, location, sleep_quality]
-      data/pipeline/global_weights.npy (7,) 전역 가중치
-      data/pipeline/user_personas.csv  user_id, n_full, persona, 중요도 비율 6개
-      data/pipeline/persona_centroids.csv
-      Pipeline/outputs/  02_*.csv, figures/02_*.png
+Output: data/pipeline/user_weights.npy   (n_users, 7) = [w0, service, cleanliness, value, rooms, location, sleep_quality]
+        data/pipeline/global_weights.npy (7,) global weights
+        data/pipeline/user_personas.csv  user_id, n_full, persona, 6 importance shares
+        data/pipeline/persona_centroids.csv
+        Pipeline/outputs/  02_*.csv, figures/02_*.png
 """
 import argparse
 
@@ -36,30 +39,30 @@ from common import (ASPECTS, SEED, WORK_DIR, ensure_dirs, load_split, rmse, save
                     setup_plot)
 
 LAMBDAS = [0.3, 1, 3, 10, 30, 100, 300, 1000]
-BUCKETS = [0, 1, 3, 7, 15, np.inf]   # 사용자의 train 완전 리뷰 수 구간 (λ 효과를 구간별로 확인)
-MIN_FULL = 3          # 페르소나 학습에 쓰는 사용자의 최소 완전 리뷰 수
+BUCKETS = [0, 1, 3, 7, 15, np.inf]   # bins of the user's number of complete train reviews (effect of λ per bin)
+MIN_FULL = 3          # minimum complete reviews for a user to be used in persona fitting
 
 
 def design(df):
-    """[1, service, ..., sleep_quality] 행렬"""
+    """[1, service, ..., sleep_quality] matrix"""
     return np.column_stack([np.ones(len(df)), df[ASPECTS].to_numpy(float)])
 
 
 def fit_user_weights(X, y, uid, n_users, w_g, lam):
-    """사용자별 정규방정식을 한 번에 푼다 (7x7 행렬 n_users개)"""
+    """Solve all per-user normal equations at once (n_users 7x7 systems)"""
     d = X.shape[1]
     G = np.zeros((n_users, d, d))
     b = np.zeros((n_users, d))
-    # np.add.at(배열, 인덱스, 값): 같은 인덱스가 여러 번 나와도 모두 더해 주는 누적 덧셈
+    # np.add.at(array, indices, values): accumulating add that sums repeated indices
     np.add.at(G, uid, X[:, :, None] * X[:, None, :])     # Σ x xᵀ
     np.add.at(b, uid, X * y[:, None])                    # Σ x y
     A = G + lam * np.eye(d)
     rhs = b + lam * w_g
-    return np.linalg.solve(A, rhs[..., None])[..., 0]   # 데이터가 없는 사용자는 해가 w_g
+    return np.linalg.solve(A, rhs[..., None])[..., 0]   # users with no data get w_g as the solution
 
 
 def to_share(W):
-    """회귀 계수 6개 -> 중요도 비율 (음수 0 처리, 합 1)"""
+    """6 regression coefficients -> importance shares (negatives set to 0, sum to 1)"""
     s = np.clip(W[:, 1:], 0, None)
     tot = s.sum(1, keepdims=True)
     return np.where(tot > 0, s / np.where(tot > 0, tot, 1), 1 / len(ASPECTS))
@@ -67,7 +70,7 @@ def to_share(W):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--k", type=int, default=None, help="페르소나 수 (지정하지 않으면 실루엣 점수로 3~8 중 선택)")
+    ap.add_argument("--k", type=int, default=None, help="number of personas (if omitted, chosen from 3-8 by silhouette score)")
     args = ap.parse_args()
     ensure_dirs()
     plt = setup_plot()
@@ -76,22 +79,22 @@ def main():
     full = df.dropna(subset=ASPECTS)
     tr, va = full[full.split == "train"], full[full.split == "val"]
     X, y, uid = design(tr), tr.rating.to_numpy(float), tr.user_id.to_numpy()
-    print(f"세부 평점 완전 train 리뷰 {len(tr):,}건, 사용자 {tr.user_id.nunique():,}명")
+    print(f"complete-aspect train reviews: {len(tr):,}, users: {tr.user_id.nunique():,}")
 
-    # (1) 전역 선형회귀
+    # (1) global linear regression
     lr = LinearRegression().fit(X[:, 1:], y)
     w_g = np.r_[lr.intercept_, lr.coef_]
-    print(f"전역 가중치: w0={w_g[0]:.3f}, " + ", ".join(f"{a}={w:.3f}" for a, w in zip(ASPECTS, w_g[1:])))
-    print(f"전역 회귀 R^2 = {lr.score(X[:, 1:], y):.3f}")
+    print(f"global weights: w0={w_g[0]:.3f}, " + ", ".join(f"{a}={w:.3f}" for a, w in zip(ASPECTS, w_g[1:])))
+    print(f"global regression R^2 = {lr.score(X[:, 1:], y):.3f}")
 
-    # (2) λ 선택: val 완전 리뷰의 rating을 자기 aspect로 예측
+    # (2) choose λ: predict the rating of complete val reviews from their own aspects
     Xv, yv, uv = design(va), va.rating.to_numpy(float), va.user_id.to_numpy()
     n_full = np.bincount(uid, minlength=n_users)
     bucket = pd.cut(n_full[uv], BUCKETS, right=False).astype(str)
 
     def row(name, pred):
         r = {"lambda": name, "val_rmse": rmse(yv, pred)}
-        for b in sorted(set(bucket), key=lambda s: float(s[1:].split(",")[0])):   # 구간별 RMSE
+        for b in sorted(set(bucket), key=lambda s: float(s[1:].split(",")[0])):   # RMSE per bin
             m = bucket == b
             r[f"n_full {b} (n={m.sum()})"] = rmse(yv[m], pred[m])
         return r
@@ -107,16 +110,16 @@ def main():
     lam_tab = pd.DataFrame(rows)
     print(lam_tab.round(4).to_string(index=False))
     _, lam, W = best
-    print(f"선택 λ = {lam}")
+    print(f"selected λ = {lam}")
     save_table(lam_tab, "02_lambda_selection")
     np.save(WORK_DIR / "user_weights.npy", W)
     np.save(WORK_DIR / "global_weights.npy", w_g)
 
-    # (3) 페르소나
+    # (3) personas
     share = to_share(W)
     mask = n_full >= MIN_FULL
     S = share[mask]
-    print(f"페르소나 학습 사용자 (완전 리뷰 {MIN_FULL}건 이상): {mask.sum():,}명")
+    print(f"users for persona fitting ({MIN_FULL}+ complete reviews): {mask.sum():,}")
 
     rng = np.random.default_rng(SEED)
     sample = S[rng.choice(len(S), size=min(20_000, len(S)), replace=False)]
@@ -128,24 +131,24 @@ def main():
     print(sil.to_string(index=False))
     save_table(sil, "02_kmeans_k_selection")
     k = args.k or int(sil.loc[sil.silhouette.idxmax(), "k"])
-    print(f"선택 K = {k}")
+    print(f"selected K = {k}")
 
     fig, ax = plt.subplots(1, 2, figsize=(10, 3.5))
     ax[0].plot(sil.k, sil.inertia, marker="o")
     ax[0].set_title("K-means inertia (elbow)")
     ax[1].plot(sil.k, sil.silhouette, marker="o", color="C1")
     ax[1].axvline(k, ls="--", color="gray")
-    ax[1].set_title("실루엣 점수")
+    ax[1].set_title("Silhouette score")
     for a in ax:
         a.set_xlabel("K")
     save_fig(plt, "02_kmeans_k_selection")
 
-    # KMeans(n_clusters, n_init=여러 초기값 중 최선 선택, random_state=재현성)
+    # KMeans(n_clusters, n_init=best of several initializations, random_state=reproducibility)
     km = KMeans(n_clusters=k, n_init=10, random_state=SEED).fit(S)
-    persona = km.predict(share)                 # 모든 사용자에게 가장 가까운 군집 배정
+    persona = km.predict(share)                 # assign every user to the nearest cluster
     cent = pd.DataFrame(km.cluster_centers_, columns=ASPECTS)
     base = S.mean(0)
-    # 이름: 전체 평균 대비 비율이 가장 높은 aspect
+    # name: the aspect with the highest share relative to the overall average
     cent["name"] = [f"P{i}_{ASPECTS[np.argmax(c / base)]}" for i, c in enumerate(km.cluster_centers_)]
     cent["n_users_fit"] = np.bincount(km.labels_, minlength=k)
     cent["n_users_all"] = np.bincount(persona, minlength=k)
@@ -160,10 +163,10 @@ def main():
     up.insert(0, "user_id", np.arange(n_users))
     up.to_csv(WORK_DIR / "user_personas.csv", index=False)
 
-    # 그림: 전역 가중치, 페르소나별 중요도 비율
+    # figure: global weights, importance shares per persona
     fig, ax = plt.subplots(1, 2, figsize=(13, 4))
     ax[0].bar(ASPECTS, w_g[1:], color="#4c72b0")
-    ax[0].set_title("전역 aspect 가중치 (선형회귀 계수)")
+    ax[0].set_title("Global aspect weights (linear regression coefficients)")
     ax[0].tick_params(axis="x", rotation=30)
     dev = cent[ASPECTS].to_numpy() - base
     im = ax[1].imshow(dev, cmap="RdBu_r", vmin=-np.abs(dev).max(), vmax=np.abs(dev).max())
@@ -172,7 +175,7 @@ def main():
     for i in range(k):
         for j in range(len(ASPECTS)):
             ax[1].text(j, i, f"{cent[ASPECTS].iat[i, j]:.2f}", ha="center", va="center", fontsize=8)
-    ax[1].set_title("페르소나별 중요도 비율 (색: 전체 평균 대비 차이)")
+    ax[1].set_title("Importance share per persona (color: difference from overall average)")
     plt.colorbar(im, ax=ax[1])
     save_fig(plt, "02_aspect_weights_personas")
 

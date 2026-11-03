@@ -1,18 +1,18 @@
 """
-10단계: 새 페르소나와 수정 키워드 사전을 08의 Kaggle 일반화 검증에 연결해 비교
+Step 10: plug the new personas and the revised keyword lexicon into the Kaggle generalization check of 08 and compare
 
-08_kaggle_generalization.py는 (a) 02의 기존 페르소나, (b) 수작업 LEXICON을 쓴다.
-여기서는 다음 네 가지를 같은 지표로 비교한다.
+08_kaggle_generalization.py uses (a) the original personas from 02 and (b) the hand-made LEXICON.
+Here the following four things are compared on the same metrics.
 
-(1) 페르소나: 기존(02, 회귀 기반) vs 편차 기반(04)
-(2) 배정 텍스트: 긍정+부정 언급 전체 vs 부정 언급만 (부정 리뷰의 불만이 '까다로움'과 더 직접 대응)
-(3) 키워드 사전: 원본 LEXICON vs 수정 LEXICON (09 점검 결과 반영)
-(4) 사전 강건성: 여행 유형별 aspect 언급 편차의 결론이 사전을 바꿔도 유지되는지
+(1) Personas: original (02, regression-based) vs deviation-based (04)
+(2) Assignment text: all positive+negative mentions vs negative mentions only (complaints in negative reviews map more directly to 'strictness')
+(3) Keyword lexicon: original LEXICON vs revised LEXICON (reflecting the 09 audit)
+(4) Lexicon robustness: whether the conclusions on aspect mention deviation by trip type hold when the lexicon changes
 
-지표: Cramér's V (여행자 유형 x 페르소나 연관 강도), 스피어만 상관 (콘텐츠 점수와 리뷰어 점수)
+Metrics: Cramér's V (strength of the traveler type x persona association), Spearman correlation (content score vs reviewer score)
 
-선행 단계: 01~05 (02의 persona_centroids.csv, 04·05의 편차 기반 페르소나), 08 (LEXICON)
-출력: Pipeline/outputs/10_*.csv
+Prerequisites: 01~05 (02's persona_centroids.csv, the deviation-based personas from 04·05), 08 (LEXICON)
+Output: Pipeline/outputs/10_*.csv
 """
 import importlib
 
@@ -22,15 +22,15 @@ from scipy.stats import chi2_contingency, spearmanr
 
 from common import ASPECTS, KAGGLE_DIR, OUT_DIR, WORK_DIR, ensure_dirs, save_table
 
-# 파일명이 숫자로 시작해 import 문을 쓸 수 없으므로 importlib.import_module(모듈명)으로 불러옴 (원본 LEXICON 재사용)
+# the file name starts with a digit, so an import statement cannot be used; load it with importlib.import_module(module name) (reuse the original LEXICON)
 base_mod = importlib.import_module("08_kaggle_generalization")
 LEXICON_ORIG = base_mod.LEXICON
 
-# 수정 사전: 09 점검에서 지적된 모호한 키워드 제거 + 빠진 키워드 추가
+# revised lexicon: remove the ambiguous keywords flagged in the 09 audit + add missing keywords
 REMOVE = {
-    "rooms": ["bed", "beds"],          # "bed was comfortable"은 sleep_quality와 겹침
-    "cleanliness": ["smell"],          # "smell of smoke"와 "smells good breakfast" 구분 불가 (원본에는 smelly만 남김)
-    "value": ["cheap"],                # "cheap furniture"는 rooms 품질 불만
+    "rooms": ["bed", "beds"],          # "bed was comfortable" overlaps with sleep_quality
+    "cleanliness": ["smell"],          # cannot tell "smell of smoke" from "smells good breakfast" (keep only smelly from the original)
+    "value": ["cheap"],                # "cheap furniture" is a complaint about rooms quality
 }
 ADD = {
     "service": ["waiter", "waitress", "manager", "housekeeping"],
@@ -42,13 +42,13 @@ ADD = {
 
 
 def build_patterns(lexicon):
-    """키워드 사전 -> aspect별 정규식 (단어 경계 매칭). 08과 같은 방식."""
+    """Keyword lexicon -> regex per aspect (word-boundary matching). Same as 08."""
     import re
     return {a: r"\b(?:" + "|".join(re.escape(w) for w in ws) + r")\b" for a, ws in lexicon.items()}
 
 
 def revised_lexicon():
-    """원본 사전에서 REMOVE를 빼고 ADD를 더한 수정 사전 (중복 제거, 순서 유지)."""
+    """Revised lexicon: the original minus REMOVE plus ADD (duplicates removed, order kept)."""
     lex = {}
     for a, ws in LEXICON_ORIG.items():
         kept = [w for w in ws if w not in REMOVE.get(a, [])]
@@ -57,45 +57,46 @@ def revised_lexicon():
 
 
 def mentions(pos_txt, neg_txt, lexicon):
-    """리뷰별 aspect 언급 여부 행렬 (긍정 POS, 부정 NEG; 0/1, 리뷰 x 6 aspect)."""
+    """Per-review aspect mention matrices (positive POS, negative NEG; 0/1, reviews x 6 aspects)."""
     pat = build_patterns(lexicon)
-    # Series.str.contains(정규식): 정규식이 텍스트에 포함되는지 불리언으로 반환
+    # Series.str.contains(regex): boolean for whether the regex occurs in the text
     pos = np.column_stack([pos_txt.str.contains(pat[a], regex=True) for a in ASPECTS]).astype(float)
     neg = np.column_stack([neg_txt.str.contains(pat[a], regex=True) for a in ASPECTS]).astype(float)
     return pos, neg
 
 
 def unit(x):
-    """행 단위 정규화 (코사인 유사도 계산용)."""
+    """Row-wise normalization (for cosine similarity)."""
     return x / np.maximum(np.linalg.norm(x, axis=1, keepdims=True), 1e-12)
 
 
 def load_personas():
-    """페르소나 두 벌 로드: (중심점 표, 기준 비율). 기준 비율은 코사인 비교에서 뺄 '평균 프로필'."""
+    """Load the persona sets: (centroid table, baseline share). The baseline is the 'average profile' subtracted before the cosine comparison."""
     old = pd.read_csv(WORK_DIR / "persona_centroids.csv")
     users = pd.read_csv(WORK_DIR / "user_personas.csv")
     base_old = users[users.n_full >= 3][ASPECTS].mean().to_numpy()
     new = pd.read_csv(OUT_DIR / "04_persona_dev_share.csv")
     cnt = pd.read_csv(OUT_DIR / "04_persona_dev_centroids.csv").set_index("name").loc[new["name"], "n_users_fit"]
-    # 새 페르소나의 기준 = 학습 사용자 수로 가중한 중심 평균
+    # baseline of the new personas = centroid mean weighted by the number of training users
     base_new = (new[ASPECTS].to_numpy() * cnt.to_numpy()[:, None]).sum(0) / cnt.sum()
-    out = {"기존(회귀 기반)": (old, base_old), "편차 기반(04)": (new, base_new)}
-    # 05(축소 강도·K 개선) 결과가 있으면 함께 비교
+    out = {"regression-based (02)": (old, base_old), "deviation-based (04)": (new, base_new)}
+    # if the 05 results (improved shrinkage strength and K) exist, compare them too
     tuned_path = OUT_DIR / "05_persona_dev_share.csv"
     if tuned_path.exists():
         tuned = pd.read_csv(tuned_path)
         w = tuned["n_users_fit"].to_numpy()[:, None]
-        out["편차 기반 개선(05)"] = (tuned, (tuned[ASPECTS].to_numpy() * w).sum(0) / w.sum())
+        out["deviation-based improved (05)"] = (tuned, (tuned[ASPECTS].to_numpy() * w).sum(0) / w.sum())
     return out
 
 
 def evaluate(POS, NEG, meta, cent, base, mode, w_g):
-    """한 조합(페르소나 x 배정 텍스트)의 지표 계산.
+    """Metrics for one combination (persona set x assignment text).
 
-    배정: 리뷰 언급 비율 편차 R와 중심 편차 C = 중심 - 기준의 코사인 유사도가 최대인 페르소나.
-    콘텐츠 점수: 호텔 aspect 평판(leave-one-out)에 가중치를 곱해 합산, 리뷰어 평점과 스피어만 상관.
+    Assignment: the persona with the highest cosine similarity between the review's mention-share deviation R
+    and the centroid deviation C = centroid - baseline.
+    Content score: hotel aspect reputation (leave-one-out) multiplied by the weights and summed; Spearman correlation with the reviewer score.
     """
-    M = (POS + NEG) if mode == "전체 텍스트" else NEG
+    M = (POS + NEG) if mode == "all text" else NEG
     has = M.sum(1) > 0
     share = M[has] / M[has].sum(1, keepdims=True)
     R = share - share.mean(0)
@@ -103,28 +104,28 @@ def evaluate(POS, NEG, meta, cent, base, mode, w_g):
     pidx = (unit(R) @ unit(C).T).argmax(1)
     trav = meta["traveler_type"].to_numpy()[has]
     ct = pd.crosstab(trav, cent["name"].to_numpy()[pidx])
-    chi2, p, _, _ = chi2_contingency(ct)       # 카이제곱 독립성 검정: (통계량, p값, 자유도, 기대도수)
+    chi2, p, _, _ = chi2_contingency(ct)       # chi-square test of independence: (statistic, p-value, dof, expected counts)
     v = np.sqrt(chi2 / (ct.to_numpy().sum() * (min(ct.shape) - 1)))
 
-    s_r = POS - NEG                             # 리뷰별 aspect 평판 (-1, 0, 1)
+    s_r = POS - NEG                             # per-review aspect reputation (-1, 0, 1)
     hid = meta["hotel_id"].to_numpy()
-    n_h = np.bincount(hid)                      # np.bincount: 호텔별 리뷰 수
+    n_h = np.bincount(hid)                      # np.bincount: number of reviews per hotel
     S_h = np.column_stack([np.bincount(hid, s_r[:, j]) for j in range(len(ASPECTS))])
-    loo = ((S_h[hid] - s_r) / np.maximum(n_h[hid] - 1, 1)[:, None])[has]   # 자기 리뷰를 뺀 호텔 평판
+    loo = ((S_h[hid] - s_r) / np.maximum(n_h[hid] - 1, 1)[:, None])[has]   # hotel reputation excluding the review itself
     y = meta["rating"].to_numpy()[has]
     w_p = cent[ASPECTS].to_numpy()[pidx]
-    # spearmanr(x, y): 순위 상관계수 (단조 관계의 강도, -1~1). .statistic이 상관계수
-    rho = {"동일 가중": spearmanr(loo.mean(1), y).statistic,
-           "전역 가중치": spearmanr(loo @ (w_g / w_g.sum()), y).statistic,
-           "페르소나 가중치": spearmanr((loo * w_p).sum(1), y).statistic}
+    # spearmanr(x, y): rank correlation coefficient (strength of a monotonic relation, -1~1). .statistic is the coefficient
+    rho = {"equal weights": spearmanr(loo.mean(1), y).statistic,
+           "global weights": spearmanr(loo @ (w_g / w_g.sum()), y).statistic,
+           "persona weights": spearmanr((loo * w_p).sum(1), y).statistic}
     sizes = pd.Series(cent["name"].to_numpy()[pidx]).value_counts(normalize=True)
     return {"n_reviews": int(has.sum()), "chi2": chi2, "p": p, "cramers_v": v,
-            "rho_equal": rho["동일 가중"], "rho_global": rho["전역 가중치"], "rho_persona": rho["페르소나 가중치"],
+            "rho_equal": rho["equal weights"], "rho_global": rho["global weights"], "rho_persona": rho["persona weights"],
             "largest_persona_share": sizes.max()}
 
 
 def trip_deviation(POS, NEG, meta):
-    """여행 유형별 aspect 언급 비율 - 전체 평균 (%p). 08과 같은 정의, 행 = traveler_type/trip_type 그룹."""
+    """Aspect mention share by trip type - overall average (pp). Same definition as 08, rows = traveler_type/trip_type groups."""
     M = POS + NEG
     has = M.sum(1) > 0
     S = pd.DataFrame(M[has] / M[has].sum(1, keepdims=True), columns=ASPECTS)
@@ -137,7 +138,7 @@ def trip_deviation(POS, NEG, meta):
 
 
 def main():
-    """사전 2종 x 페르소나 x 배정 텍스트 조합을 평가하고, 사전 강건성과 수정 목록을 저장한다."""
+    """Evaluate the 2 lexicons x persona sets x assignment text combinations, and save the lexicon robustness and change list."""
     ensure_dirs()
     k = pd.read_csv(KAGGLE_DIR / "kaggle_test.csv", encoding="utf-8-sig",
                     usecols=["hotel_id", "rating", "trip_type", "traveler_type", "positive_review", "negative_review"])
@@ -145,22 +146,22 @@ def main():
     neg_txt = k.negative_review.fillna("").str.lower()
     w_g = np.load(WORK_DIR / "global_weights.npy")[1:]
     personas = load_personas()
-    lexicons = {"원본 사전": LEXICON_ORIG, "수정 사전": revised_lexicon()}
+    lexicons = {"original lexicon": LEXICON_ORIG, "revised lexicon": revised_lexicon()}
 
     rows, devs = [], {}
     for lname, lex in lexicons.items():
         POS, NEG = mentions(pos_txt, neg_txt, lex)
         devs[lname] = trip_deviation(POS, NEG, k)
         for pname, (cent, base) in personas.items():
-            for mode in ["전체 텍스트", "부정 텍스트만"]:
+            for mode in ["all text", "negative text only"]:
                 rows.append({"lexicon": lname, "persona": pname, "assign_by": mode,
                              **evaluate(POS, NEG, k, cent, base, mode, w_g)})
     comp = pd.DataFrame(rows)
     print(comp.round(4).to_string(index=False))
     save_table(comp.round(4), "10_persona_comparison")
 
-    # (4) 사전 강건성: 그룹별 편차 표가 사전 수정 후에도 같은지
-    a, b = devs["원본 사전"], devs["수정 사전"]
+    # (4) lexicon robustness: whether the per-group deviation table stays the same after the lexicon revision
+    a, b = devs["original lexicon"], devs["revised lexicon"]
     A, B = a[ASPECTS], b[ASPECTS]
     same_top = (A.idxmax(axis=1) == B.idxmax(axis=1))
     same_bottom = (A.idxmin(axis=1) == B.idxmin(axis=1))
@@ -169,12 +170,12 @@ def main():
                         "bottom_same": same_bottom, "max_abs_diff_pp": (A - B).abs().max(axis=1)})
     print(rob.round(2).to_string())
     flat = np.corrcoef(A.to_numpy().ravel(), B.to_numpy().ravel())[0, 1]
-    print(f"그룹 x aspect 편차 표의 상관(원본 vs 수정): {flat:.3f}, 최상위 aspect 유지 {same_top.mean():.0%}, "
-          f"최하위 유지 {same_bottom.mean():.0%}")
+    print(f"Correlation of the group x aspect deviation tables (original vs revised): {flat:.3f}, top aspect kept {same_top.mean():.0%}, "
+          f"bottom kept {same_bottom.mean():.0%}")
     save_table(rob.round(3), "10_lexicon_robustness", index=True)
     save_table(B.assign(column=b["column"]).round(3), "10_aspect_mention_by_trip_type_revised", index=True)
 
-    # 수정 사전 목록 기록 (팀 검토용)
+    # record the revised lexicon changes (for team review)
     changes = [{"aspect": x, "action": "remove", "keyword": w} for x, ws in REMOVE.items() for w in ws]
     changes += [{"aspect": x, "action": "add", "keyword": w} for x, ws in ADD.items() for w in ws]
     save_table(pd.DataFrame(changes), "10_lexicon_changes")

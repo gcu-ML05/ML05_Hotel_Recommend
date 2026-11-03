@@ -1,21 +1,21 @@
 """
-Kaggle "515K Hotel Reviews Data in Europe" (Booking.com, 테스트용) 전처리
+Preprocessing of Kaggle "515K Hotel Reviews Data in Europe" (Booking.com, for testing)
 
-입력 : Hotel_Reviews.csv
-출력 : data/processing/kaggle/
-    kaggle_test.csv                 정제된 리뷰 (테스트용)
-    hotel_meta_kaggle.csv           호텔 정보 (hotel_id, 이름, 주소, 도시, 좌표, 평균 점수)
-    reports/kaggle_report.csv       전처리 전후 비교
-    reports/kaggle_traveler_type_counts.csv   여행자 유형 분포 (페르소나 검증용)
+Input : Hotel_Reviews.csv
+Output : data/processing/kaggle/
+    kaggle_test.csv                 cleaned reviews (for testing)
+    hotel_meta_kaggle.csv           hotel info (hotel_id, name, address, city, coordinates, average score)
+    reports/kaggle_report.csv       before/after preprocessing comparison
+    reports/kaggle_traveler_type_counts.csv   traveler type distribution (for persona validation)
 
-팀 결정 사항
-    E. Reviewer_Score(10점 척도)를 2로 나눠 5점 척도 rating으로 변환 (원본 점수도 함께 보관)
+Team decisions
+    E. Divide Reviewer_Score (10-point scale) by 2 to get a 5-point rating (the original score is kept too)
 
-특징
-    - 사용자 ID가 없음 -> 협업 필터링 테스트는 불가, 콘텐츠 기반/여행자 유형 검증용
-    - Tags에서 여행 목적, 여행자 유형, 숙박일수, 객실 유형, 모바일 여부를 추출
+Notes
+    - No user IDs -> collaborative filtering cannot be tested; used for content-based / traveler type validation
+    - Trip purpose, traveler type, number of nights, room type and mobile flag are extracted from Tags
 
-사용법
+Usage
     python 02_preprocess_kaggle.py --src ../data/raw/Hotel_Reviews.csv
 """
 import argparse
@@ -35,7 +35,7 @@ TRAVELER_TYPES = {"Couple", "Solo traveler", "Family with young children",
 MOBILE_TAG = "Submitted from a mobile device"
 PET_TAG = "With a pet"
 NIGHTS_RE = re.compile(r"^Stayed (\d+) nights?$")
-PLACEHOLDERS = {"No Negative", "No Positive"}   # 리뷰 내용이 없다는 뜻의 자리표시 문구
+PLACEHOLDERS = {"No Negative", "No Positive"}   # placeholder phrases meaning the review has no content
 
 
 def city_from_address(addr):
@@ -44,14 +44,14 @@ def city_from_address(addr):
 
 
 def parse_tags(tag_str):
-    """Tags 문자열 -> (여행 목적, 여행자 유형, 숙박일수, 객실 유형, 모바일, 반려동물)"""
+    """Tags string -> (trip purpose, traveler type, nights, room type, mobile, pet)"""
     trip = traveler = room = None
     nights = np.nan
     mobile = pet = False
     try:
         tags = [t.strip() for t in ast.literal_eval(tag_str)]
     except (ValueError, SyntaxError):
-        return trip, traveler, nights, room, mobile, pet, True   # 마지막 값: 파싱 실패 표시
+        return trip, traveler, nights, room, mobile, pet, True   # last value: parse failure flag
     rooms = []
     for t in tags:
         m = NIGHTS_RE.match(t)
@@ -66,7 +66,7 @@ def parse_tags(tag_str):
         elif t == PET_TAG:
             pet = True
         else:
-            rooms.append(t)               # 나머지는 객실 유형으로 간주
+            rooms.append(t)               # everything else is treated as the room type
     room = " | ".join(rooms) if rooms else None
     return trip, traveler, nights, room, mobile, pet, False
 
@@ -95,37 +95,37 @@ def main():
     report = []
 
     df = pd.read_csv(args.src)
-    print(f"원본: {df.shape[0]:,}행 x {df.shape[1]}열")
-    report.append(summary(df, "0_raw(원본)", {
+    print(f"Original: {df.shape[0]:,} rows x {df.shape[1]} columns")
+    report.append(summary(df, "0_raw (original)", {
         "duplicate_rows": int(df.duplicated().sum()),
         "missing_lat_lng": int(df.lat.isna().sum()),
         "positive_placeholder": int((df.Positive_Review.str.strip() == "No Positive").sum()),
         "negative_placeholder": int((df.Negative_Review.str.strip() == "No Negative").sum()),
     }))
 
-    # 1) 완전 중복 행 제거
+    # 1) remove exact duplicate rows
     n0 = len(df)
     df = df.drop_duplicates().reset_index(drop=True)
-    print(f"완전 중복 제거: {n0 - len(df):,}행")
-    report.append(summary(df, "1_중복제거(완전 중복 행)"))
+    print(f"Exact duplicates removed: {n0 - len(df):,} rows")
+    report.append(summary(df, "1_duplicate removal (exact duplicate rows)"))
 
-    # 2) 공백 정리, 날짜/호텔/도시
+    # 2) whitespace cleanup, date/hotel/city
     df["Reviewer_Nationality"] = df["Reviewer_Nationality"].astype(str).str.strip()
     df["review_date"] = pd.to_datetime(df["Review_Date"], format="%m/%d/%Y", errors="coerce")
     n_bad_date = int(df.review_date.isna().sum())
     df["city"] = df["Hotel_Address"].apply(city_from_address)
     df["hotel_id"] = df.groupby(["Hotel_Name", "Hotel_Address"], sort=False).ngroup()
 
-    # 3) 평점: 10점 -> 5점 (팀 결정 E)
+    # 3) rating: 10-point -> 5-point (team decision E)
     df["reviewer_score_10"] = df["Reviewer_Score"]
     df["rating"] = (df["Reviewer_Score"] / 2).round(2)
 
-    # 4) 리뷰 텍스트: 자리표시 문구 제거 후 긍정+부정 결합
+    # 4) review text: remove placeholder phrases, then join positive + negative
     df["positive_review"] = df["Positive_Review"].apply(clean_review)
     df["negative_review"] = df["Negative_Review"].apply(clean_review)
     df["review_text"] = (df.positive_review + " " + df.negative_review).str.strip()
 
-    # 5) Tags 파싱
+    # 5) parse Tags
     parsed = df["Tags"].apply(parse_tags)
     tag_df = pd.DataFrame(parsed.tolist(),
                           columns=["trip_type", "traveler_type", "nights", "room_type",
@@ -133,11 +133,11 @@ def main():
     df = pd.concat([df.reset_index(drop=True), tag_df], axis=1)
     n_parse_fail = int(df.tag_parse_failed.sum())
 
-    # 6) 검증: 형식 오류 행 제거
+    # 6) validation: remove rows with format errors
     n0 = len(df)
     df = df[df.review_date.notna() & df.rating.between(1, 5) & df.city.notna()]
-    print(f"형식 오류 제거(날짜/평점/도시): {n0 - len(df):,}행 "
-          f"(날짜 변환 실패 {n_bad_date}, Tags 파싱 실패 {n_parse_fail})")
+    print(f"Format errors removed (date/rating/city): {n0 - len(df):,} rows "
+          f"(date conversion failed {n_bad_date}, Tags parse failed {n_parse_fail})")
 
     final_cols = ["hotel_id", "Hotel_Name", "city", "review_date", "reviewer_score_10", "rating",
                   "Reviewer_Nationality", "trip_type", "traveler_type", "nights", "room_type",
@@ -147,7 +147,7 @@ def main():
     res.insert(0, "review_id", range(len(res)))
     res["review_date"] = res.review_date.dt.strftime("%Y-%m-%d")
 
-    report.append(summary(res, "2_최종(전처리 후)", {
+    report.append(summary(res, "2_final (after preprocessing)", {
         "missing_trip_type": int(res.trip_type.isna().sum()),
         "missing_traveler_type": int(res.traveler_type.isna().sum()),
         "missing_room_type": int(res.room_type.isna().sum()),
@@ -158,7 +158,7 @@ def main():
         "tag_parse_failed": n_parse_fail,
     }))
 
-    # 호텔 메타 / 저장
+    # hotel meta / save
     meta = (df.groupby("hotel_id")
               .agg(hotel_name=("Hotel_Name", "first"), address=("Hotel_Address", "first"),
                    city=("city", "first"), lat=("lat", "first"), lng=("lng", "first"),
@@ -170,16 +170,16 @@ def main():
 
     rep = pd.DataFrame(report)
     rep.to_csv(out / "reports" / "kaggle_report.csv", index=False, encoding="utf-8-sig")
-    tcount = res.traveler_type.fillna("(없음)").value_counts().rename_axis("traveler_type").reset_index(name="count")
+    tcount = res.traveler_type.fillna("(none)").value_counts().rename_axis("traveler_type").reset_index(name="count")
     tcount.to_csv(out / "reports" / "kaggle_traveler_type_counts.csv", index=False, encoding="utf-8-sig")
 
     pd.set_option("display.width", 220)
     pd.set_option("display.max_columns", 30)
-    print("\n==== 전처리 전후 비교 ====")
+    print("\n==== Before/after preprocessing ====")
     print(rep.T.to_string(header=False))
-    print("\n여행자 유형 분포")
+    print("\nTraveler type distribution")
     print(tcount.to_string(index=False))
-    print(f"\n저장 완료: {out}")
+    print(f"\nSaved: {out}")
 
 
 if __name__ == "__main__":

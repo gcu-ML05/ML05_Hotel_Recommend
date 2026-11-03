@@ -1,17 +1,17 @@
 """
-7단계 (선택): Item-kNN 하이퍼파라미터 선택 (val)
+Step 7 (optional): Item-kNN hyperparameter selection (val)
 
-기존판(사용자 평균 기준, adjusted cosine)과 개선판(KNNBaseline)을 val 분할에서 비교하고
-06_train_evaluate.py의 기본값(k, shrink, damp)을 고른 근거를 남긴다.
+Compares the original version (centered on the user mean, adjusted cosine) with the improved version
+(KNNBaseline) on the val split, and records why 06_train_evaluate.py uses its defaults (k, shrink, damp).
 
-    val RMSE              : 모든 사용자의 val 리뷰 평점 예측
-    HR@10 (predict)       : 평점 예측값으로 순위를 매긴 경우
-    HR@10 (rank_score)    : 순위용 점수(공동 방문 유사도 합)로 순위를 매긴 경우
-    neighbor_coverage     : val 쌍 중 사용자가 평가한 이웃이 하나라도 있는 비율
-    (Top-N은 val 사용자 5,000명, 정답 1 + 무작위 후보 99)
+    val RMSE              : rating prediction for every user's val review
+    HR@10 (predict)       : ranking by the predicted rating
+    HR@10 (rank_score)    : ranking by the ranking score (sum of co-visit similarities)
+    neighbor_coverage     : share of val pairs where the user has rated at least one neighbor
+    (Top-N uses 5,000 val users, 1 ground truth + 99 random candidates)
 
-설정 하나당 유사도 계산에 약 4~5분 걸린다 (전체 약 30분).
-출력: Pipeline/outputs/07_itemknn_tuning.csv
+Each setting takes about 4-5 minutes to compute similarities (about 30 minutes in total).
+Output: Pipeline/outputs/07_itemknn_tuning.csv
 """
 import time
 
@@ -21,9 +21,9 @@ import pandas as pd
 from common import SEED, ensure_dirs, load_split, ranking_metrics, rmse, sample_candidates, save_table
 from models import BiasBaseline, ItemKNN
 
-# (center, shrink, k, damp 목록)
+# (center, shrink, k, list of damp values)
 CONFIGS = [
-    ("user_mean", 10, 50, [0]),                  # 기존판
+    ("user_mean", 10, 50, [0]),                  # original version
     ("baseline", 100, 50, [0, 0.03, 0.3, 1]),
     ("baseline", 100, 200, [0.03]),
     ("baseline", 100, 500, [0.03]),

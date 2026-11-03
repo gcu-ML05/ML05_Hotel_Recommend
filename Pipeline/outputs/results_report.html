@@ -1,10 +1,10 @@
-<title>호텔 추천 파이프라인 결과</title>
+<title>Hotel Recommender Results</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: 한 줄 문서형 리포트. 요약 수치 → 단계별 결과(차트 + 표) → 한계. 넓은 화면에서 차트 2열 */
+/* Layout: single-column document report. Key numbers → results per step (charts + tables) → limitations. Charts in 2 columns on wide screens */
 :root {
   --bg: #f5f6f8;
   --surface: #ffffff;
@@ -24,7 +24,7 @@
   --warn-bg: #fdf3dc;
   --warn-fg: #7a5200;
   --ok-fg: #0b7a0b;
-  --font-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, sans-serif;
   --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
 }
 @media (prefers-color-scheme: dark) {
@@ -111,83 +111,83 @@ code { font-family: var(--font-data); font-size: .92em; }
 
 <div class="wrap">
   <header>
-    <div class="eyebrow">ML05 · Team 5 · 2026-11-02 기준 · 파이프라인 01~11 전체 결과</div>
-    <h1>호텔 추천 파이프라인 결과</h1>
-    <p class="lede">HotelRec(TripAdvisor) 리뷰 122만 건으로 메모리 기반 CF, 모델 기반 CF, 콘텐츠 기반, 하이브리드 추천을 학습하고, 사용자의 aspect 선호와 여행자 페르소나를 추정했습니다. Booking.com(Kaggle) 리뷰로 다른 플랫폼의 신규 사용자에게도 통하는지 확인했습니다. 수치는 <code>Pipeline/outputs/</code>의 CSV에서 가져왔습니다 (시드 42).</p>
-    <nav class="toc" aria-label="목차">
-      <a href="#steps">단계</a><a href="#data">데이터</a><a href="#aspect">회귀 기반 선호</a><a href="#hotel">호텔 특징</a><a href="#deviation">편차 기반 선호</a>
-      <a href="#rating">평점 예측</a><a href="#topn">Top-N 추천</a><a href="#link">선호 연결</a><a href="#kaggle-text">Kaggle 텍스트</a><a href="#kaggle-match">Kaggle 호텔 매칭</a><a href="#evolution">개선 과정</a><a href="#next">한계</a>
+    <div class="eyebrow">ML05 · Team 5 · as of 2026-11-02 · full results of pipeline steps 01~11</div>
+    <h1>Hotel recommendation pipeline results</h1>
+    <p class="lede">Memory-based CF, model-based CF, content-based and hybrid recommenders were trained on 1.22 million HotelRec (TripAdvisor) reviews, and users' aspect preferences and traveler personas were estimated. Booking.com (Kaggle) reviews were used to check whether this also works for new users on another platform. The numbers come from the CSVs in <code>Pipeline/outputs/</code> (seed 42).</p>
+    <nav class="toc" aria-label="Contents">
+      <a href="#steps">Steps</a><a href="#data">Data</a><a href="#aspect">Regression-based preferences</a><a href="#hotel">Hotel features</a><a href="#deviation">Deviation-based preferences</a>
+      <a href="#rating">Rating prediction</a><a href="#topn">Top-N recommendation</a><a href="#link">Plugging in preferences</a><a href="#kaggle-text">Kaggle text</a><a href="#kaggle-match">Kaggle hotel matching</a><a href="#evolution">Improvements</a><a href="#next">Limitations</a>
     </nav>
   </header>
 
-  <section aria-label="핵심 수치">
+  <section aria-label="Key numbers">
     <div class="kpis">
-      <div class="kpi"><span class="label">평점 예측 최저 RMSE (평점 하이브리드)</span><span class="value">0.906</span><span class="note">MF 0.907, 기준선 0.909, 평균 예측 1.004</span></div>
-      <div class="kpi"><span class="label">Top-N HR@10 (개선 ItemKNN)</span><span class="value">0.349</span><span class="note">인기도 0.328, 기존 ItemKNN 0.035</span></div>
-      <div class="kpi"><span class="label">Booking.com 호텔 평균 점수와 상관</span><span class="value">0.743</span><span class="note">공통 호텔 505개, MF 호텔 점수</span></div>
-      <div class="kpi"><span class="label">전처리 검증</span><span class="value">24/24</span><span class="note">원본 재실행 결과와 공유 데이터 동일</span></div>
+      <div class="kpi"><span class="label">Lowest rating prediction RMSE (rating hybrid)</span><span class="value">0.906</span><span class="note">MF 0.907, baseline 0.909, mean prediction 1.004</span></div>
+      <div class="kpi"><span class="label">Top-N HR@10 (improved ItemKNN)</span><span class="value">0.349</span><span class="note">popularity 0.328, original ItemKNN 0.035</span></div>
+      <div class="kpi"><span class="label">Correlation with Booking.com hotel mean scores</span><span class="value">0.743</span><span class="note">505 shared hotels, MF hotel scores</span></div>
+      <div class="kpi"><span class="label">Preprocessing validation</span><span class="value">24/24</span><span class="note">rerun from the raw data matches the shared data</span></div>
     </div>
   </section>
 
   <section id="steps">
-    <div class="sec-head"><h2>파이프라인 단계</h2>
-      <p class="lede">전처리 결과에서 시작해 번호 순서대로 실행합니다 (전체 약 25분). 결과 파일 이름 앞의 번호는 그것을 만든 단계입니다.</p></div>
+    <div class="sec-head"><h2>Pipeline steps</h2>
+      <p class="lede">Starts from the preprocessing results and runs in numeric order (about 25 minutes in total). The number in front of a result file name is the step that made it.</p></div>
     <div class="tbl panel"><table>
-      <thead><tr><th>단계</th><th>스크립트</th><th>하는 일</th><th>담당</th></tr></thead>
+      <thead><tr><th>Step</th><th>Script</th><th>What it does</th><th>Owner</th></tr></thead>
       <tbody>
-        <tr><td class="num">01</td><td><code>01_split.py</code></td><td>사용자별 시간 순 학습/검증/테스트 분할</td><td>1</td></tr>
-        <tr><td class="num">02</td><td><code>02_user_aspect_weights.py</code></td><td>회귀 기반 aspect 가중치, 페르소나</td><td>2</td></tr>
-        <tr><td class="num">03</td><td><code>03_hotel_features.py</code></td><td>호텔 aspect 평균, 리뷰 TF-IDF</td><td>2</td></tr>
-        <tr><td class="num">04</td><td><code>04_persona_deviation.py</code></td><td>편차 기반 관대함·까다로움, 페르소나</td><td>2</td></tr>
-        <tr><td class="num">05</td><td><code>05_persona_tuning.py</code></td><td>04의 설정 선택과 test 평가</td><td>2</td></tr>
-        <tr><td class="num">06</td><td><code>06_train_evaluate.py</code></td><td>추천 모델 학습, 평점 예측·Top-N 평가, 편차 기반 선호 연결, 하이브리드</td><td>1</td></tr>
-        <tr><td class="num">07</td><td><code>07_tune_itemknn.py</code></td><td>Item-kNN 설정 선택 근거 (선택)</td><td>1</td></tr>
-        <tr><td class="num">08</td><td><code>08_kaggle_generalization.py</code></td><td>Kaggle 리뷰 aspect 언급, 여행 유형별 선호</td><td>2</td></tr>
-        <tr><td class="num">09</td><td><code>09_lexicon_audit.py</code></td><td>키워드 사전 점검</td><td>2</td></tr>
-        <tr><td class="num">10</td><td><code>10_persona_lexicon_compare.py</code></td><td>페르소나·키워드 사전 비교, 사전 강건성</td><td>2</td></tr>
-        <tr><td class="num">11</td><td><code>11_kaggle_hotel_matching.py</code></td><td>HotelRec·Kaggle 공통 호텔에서 예측 vs 실제 점수</td><td>1</td></tr>
+        <tr><td class="num">01</td><td><code>01_split.py</code></td><td>per-user chronological train/validation/test split</td><td>1</td></tr>
+        <tr><td class="num">02</td><td><code>02_user_aspect_weights.py</code></td><td>regression-based aspect weights, personas</td><td>2</td></tr>
+        <tr><td class="num">03</td><td><code>03_hotel_features.py</code></td><td>hotel aspect means, review TF-IDF</td><td>2</td></tr>
+        <tr><td class="num">04</td><td><code>04_persona_deviation.py</code></td><td>deviation-based leniency and strictness, personas</td><td>2</td></tr>
+        <tr><td class="num">05</td><td><code>05_persona_tuning.py</code></td><td>settings selection for 04 and test evaluation</td><td>2</td></tr>
+        <tr><td class="num">06</td><td><code>06_train_evaluate.py</code></td><td>model training, rating prediction and Top-N evaluation, plugging in the deviation-based preferences, hybrids</td><td>1</td></tr>
+        <tr><td class="num">07</td><td><code>07_tune_itemknn.py</code></td><td>evidence for the Item-kNN settings (optional)</td><td>1</td></tr>
+        <tr><td class="num">08</td><td><code>08_kaggle_generalization.py</code></td><td>aspect mentions in Kaggle reviews, preferences by trip type</td><td>2</td></tr>
+        <tr><td class="num">09</td><td><code>09_lexicon_audit.py</code></td><td>keyword lexicon audit</td><td>2</td></tr>
+        <tr><td class="num">10</td><td><code>10_persona_lexicon_compare.py</code></td><td>persona and keyword lexicon comparison, lexicon robustness</td><td>2</td></tr>
+        <tr><td class="num">11</td><td><code>11_kaggle_hotel_matching.py</code></td><td>predicted vs actual scores on hotels shared by HotelRec and Kaggle</td><td>1</td></tr>
       </tbody></table></div>
   </section>
 
   <section id="data">
-    <div class="sec-head"><div class="row"><h2>01 · 데이터와 분할</h2></div>
-      <p class="lede">사용자마다 가장 최근 리뷰는 test, 그 직전 리뷰는 val, 나머지는 train으로 나눴습니다. 미래 리뷰로 과거를 맞히는 시간 누수가 없습니다.</p></div>
+    <div class="sec-head"><div class="row"><h2>01 · Data and split</h2></div>
+      <p class="lede">Each user's most recent review went to test, the one before it to val, and the rest to train. There is no time leakage of predicting the past from future reviews.</p></div>
     <div class="status">
-      <div><b>train · partial</b><span class="ok">✓ 원본 재실행 결과와 바이트 단위 동일</span><span>리뷰 1,228,619건 · 사용자 130,036명 · 호텔 46,747개</span></div>
-      <div><b>hotel_map · user_map</b><span class="ok">✓ 46,747행 / 130,036행으로 교체</span><span>도시명이 해당 호텔 리뷰에 나오는 비율 3.9% → 87.9%</span></div>
-      <div><b>Kaggle (Booking.com)</b><span class="ok">✓ 검증 통과</span><span>리뷰 515,212건 · 호텔 1,494개 · 유럽 6개 도시</span></div>
+      <div><b>train · partial</b><span class="ok">✓ byte-identical to the rerun from the raw data</span><span>1,228,619 reviews · 130,036 users · 46,747 hotels</span></div>
+      <div><b>hotel_map · user_map</b><span class="ok">✓ replaced with the 46,747-row / 130,036-row versions</span><span>share of hotels whose city name appears in their reviews 3.9% → 87.9%</span></div>
+      <div><b>Kaggle (Booking.com)</b><span class="ok">✓ validation passed</span><span>515,212 reviews · 1,494 hotels · 6 European cities</span></div>
     </div>
     <div class="tbl panel"><table>
-      <thead><tr><th>분할</th><th class="num">리뷰</th><th class="num">사용자</th><th class="num">호텔</th><th class="num">평균 평점</th><th class="num">세부 평점 6개 완전</th></tr></thead>
+      <thead><tr><th>Split</th><th class="num">Reviews</th><th class="num">Users</th><th class="num">Hotels</th><th class="num">Mean rating</th><th class="num">All 6 sub-ratings</th></tr></thead>
       <tbody>
         <tr><td>train</td><td class="num">968,547</td><td class="num">130,036</td><td class="num">46,744</td><td class="num">4.11</td><td class="num">30.9%</td></tr>
         <tr><td>val</td><td class="num">130,036</td><td class="num">130,036</td><td class="num">39,339</td><td class="num">4.15</td><td class="num">12.9%</td></tr>
         <tr><td>test</td><td class="num">130,036</td><td class="num">130,036</td><td class="num">38,522</td><td class="num">4.16</td><td class="num">9.9%</td></tr>
       </tbody></table>
-      <p class="cap">최근 리뷰일수록 세부 평점이 적습니다. aspect 기반 모델은 과거 리뷰로 학습하고 최근 리뷰로 평가됩니다.</p></div>
+      <p class="cap">The more recent the review, the fewer sub-ratings it has. The aspect-based models are trained on past reviews and evaluated on recent ones.</p></div>
   </section>
 
   <section id="aspect">
-    <div class="sec-head"><div class="row"><h2>02 · 회귀 기반 aspect 중요도와 페르소나</h2></div>
-      <p class="lede">세부 평점 6개로 전체 평점을 설명하는 선형회귀로 aspect 중요도를 추정했습니다. 사용자별 가중치는 리뷰가 적어 전역 가중치 쪽으로 축소하는 Ridge를 썼습니다.</p></div>
+    <div class="sec-head"><div class="row"><h2>02 · Regression-based aspect importance and personas</h2></div>
+      <p class="lede">Aspect importance was estimated with a linear regression explaining the overall rating by the 6 sub-ratings. Users have few reviews, so the per-user weights use a Ridge that shrinks toward the global weights.</p></div>
     <div class="grid2">
-      <div class="panel"><h3>전역 aspect 가중치 (R² = 0.761)</h3><div id="c-wg"></div>
-        <p class="cap">전체 평점은 rooms와 service의 영향이 가장 크고 location이 가장 작습니다.</p></div>
-      <div class="panel"><h3>개인화 강도 λ별 val RMSE</h3><div id="c-ridge"></div>
-        <p class="cap">점선은 전역 가중치(0.4565). λ가 클수록(개인화가 약할수록) 오차가 줄어, 사용자별 가중치가 전역 가중치보다 낫지 않았습니다.</p></div>
+      <div class="panel"><h3>Global aspect weights (R² = 0.761)</h3><div id="c-wg"></div>
+        <p class="cap">rooms and service influence the overall rating the most, location the least.</p></div>
+      <div class="panel"><h3>val RMSE by personalization strength λ</h3><div id="c-ridge"></div>
+        <p class="cap">The dashed line is the global weights (0.4565). The larger λ (the weaker the personalization), the lower the error, so the per-user weights were no better than the global weights.</p></div>
     </div>
-    <div class="panel"><h3>페르소나 중심점 (K=3, 실루엣 0.352)</h3>
+    <div class="panel"><h3>Persona centroids (K=3, silhouette 0.352)</h3>
       <div class="tbl"><table id="t-persona"></table></div>
-      <p class="cap">세 페르소나의 중요도 비율 차이가 약 0.003으로, 서로 다른 여행자 유형이라고 보기 어렵습니다. 그래서 04·05에서 회귀 계수 대신 편차로 선호를 다시 추정했습니다.</p></div>
+      <p class="cap">The importance shares of the three personas differ by only about 0.003, so they can hardly be called different traveler types. That is why 04·05 re-estimate the preferences from deviations instead of regression coefficients.</p></div>
   </section>
 
   <section id="hotel">
-    <div class="sec-head"><div class="row"><h2>03 · 호텔 특징</h2></div>
-      <p class="lede">콘텐츠 기반 추천에 쓸 호텔 4.7만 개의 특징을 train 리뷰로만 만들었습니다. 세부 평점 6개의 호텔별 평균(리뷰가 적은 호텔은 전체 평균 쪽으로 축소)과, 리뷰 제목·본문의 TF-IDF(단어 1만 개 중 호텔마다 상위 100개)입니다.</p></div>
+    <div class="sec-head"><div class="row"><h2>03 · Hotel features</h2></div>
+      <p class="lede">Features of the 47k hotels for content-based recommendation were built from train reviews only: per-hotel means of the 6 sub-ratings (hotels with few reviews shrunk toward the overall mean) and the TF-IDF of review titles and texts (top 100 of 10k terms per hotel).</p></div>
     <div class="grid2">
-      <div class="panel"><h3>호텔 aspect 평균의 분포</h3>
+      <div class="panel"><h3>Distribution of hotel aspect means</h3>
         <div class="tbl"><table>
-          <thead><tr><th>aspect</th><th class="num">호텔 평균</th><th class="num">표준편차</th></tr></thead>
+          <thead><tr><th>aspect</th><th class="num">Hotel mean</th><th class="num">Std. dev.</th></tr></thead>
           <tbody>
             <tr><td>location</td><td class="num">4.357</td><td class="num">0.276</td></tr>
             <tr><td>cleanliness</td><td class="num">4.354</td><td class="num">0.291</td></tr>
@@ -196,10 +196,10 @@ code { font-family: var(--font-data); font-size: .92em; }
             <tr><td>rooms</td><td class="num">4.083</td><td class="num">0.327</td></tr>
             <tr><td>value</td><td class="num">4.054</td><td class="num">0.290</td></tr>
           </tbody></table></div>
-        <p class="cap">위치와 청결은 대부분의 호텔이 높게 받고, 객실과 가성비는 낮고 호텔 간 차이도 큽니다.</p></div>
-      <div class="panel"><h3>리뷰가 많은 호텔의 TF-IDF 상위 단어</h3>
+        <p class="cap">Most hotels score high on location and cleanliness; rooms and value score lower and differ more between hotels.</p></div>
+      <div class="panel"><h3>Top TF-IDF terms of hotels with many reviews</h3>
         <div class="tbl"><table>
-          <thead><tr><th>호텔</th><th>상위 단어</th></tr></thead>
+          <thead><tr><th>Hotel</th><th>Top terms</th></tr></thead>
           <tbody>
             <tr><td>Sofitel London Gatwick</td><td>gatwick, sofitel, runway, terminal, monorail</td></tr>
             <tr><td>Pan Pacific Singapore</td><td>singapore, pacific, raffles, mrt, marina</td></tr>
@@ -207,191 +207,191 @@ code { font-family: var(--font-data); font-size: .92em; }
             <tr><td>Grand Hyatt New York</td><td>hyatt, nyc, midtown, manhattan, empire</td></tr>
             <tr><td>Radisson Blu Manchester Airport</td><td>manchester, runway, terminals, walkway, planes</td></tr>
           </tbody></table></div>
-        <p class="cap">호텔마다 위치와 성격(공항, 도심, 관광지)을 드러내는 단어가 뽑힙니다. 사용자가 다녀간 호텔들의 단어로 사용자 프로필을 만들어 비슷한 호텔을 찾습니다.</p></div>
+        <p class="cap">For each hotel, the terms reveal its location and character (airport, downtown, tourist spot). A user profile is built from the terms of the hotels the user visited to find similar hotels.</p></div>
     </div>
   </section>
 
   <section id="deviation">
-    <div class="sec-head"><div class="row"><h2>04·05 · 편차 기반 선호와 페르소나</h2></div>
-      <p class="lede">사용자가 준 aspect 점수가 그 호텔의 평균보다 얼마나 높거나 낮은지를 평균합니다. 모든 aspect를 후하게 주는 정도가 <b>관대함</b>, 관대함을 뺀 뒤 특정 aspect를 다른 사람보다 박하게 주는 정도가 <b>까다로움</b>입니다. 계수를 추정하지 않고 평균만 내므로 리뷰가 적어도 안정적입니다.</p></div>
+    <div class="sec-head"><div class="row"><h2>04·05 · Deviation-based preferences and personas</h2></div>
+      <p class="lede">Averages how much higher or lower the user's aspect scores are than that hotel's mean. How generously the user scores all aspects is <b>leniency</b>; after removing leniency, how harshly the user scores a particular aspect compared with others is <b>strictness</b>. Only means are taken, no coefficients are estimated, so it is stable even with few reviews.</p></div>
     <div class="grid2">
-      <div class="panel"><h3>test 세부 평점 예측 RMSE (전체 aspect)</h3><div id="c-dev"></div>
-        <p class="cap">관대함이 가장 큰 개선을 만듭니다(0.905 → 0.878). aspect별 개인 까다로움은 −0.001, 페르소나는 −0.0002로 효과가 작습니다. 설정은 val로 고르고 test로 따로 보고했습니다.</p></div>
-      <div class="panel"><h3>까다로움 축소 강도 M별 val RMSE</h3>
-        <div class="legend"><span><i style="background:var(--accent)"></i>관대함 + 개인 까다로움</span><span><i style="background:var(--mark)"></i>관대함만</span></div>
+      <div class="panel"><h3>test sub-rating prediction RMSE (all aspects)</h3><div id="c-dev"></div>
+        <p class="cap">Leniency gives the largest improvement (0.905 → 0.878). Per-aspect personal strictness (−0.001) and personas (−0.0002) have small effects. Settings were chosen on val and test is reported separately.</p></div>
+      <div class="panel"><h3>val RMSE by strictness shrinkage strength M</h3>
+        <div class="legend"><span><i style="background:var(--accent)"></i>leniency + personal strictness</span><span><i style="background:var(--mark)"></i>leniency only</span></div>
         <div id="c-shrink"></div>
-        <p class="cap">축소가 약하면(M=1, 3) 잡음 때문에 관대함만 쓸 때보다 나빠지고, M=30에서 가장 좋습니다.</p></div>
+        <p class="cap">With weak shrinkage (M=1, 3) noise makes it worse than leniency only; M=30 is best.</p></div>
     </div>
     <div class="grid2">
-      <div class="panel"><h3>aspect별 관대함 반영 계수 β (val)</h3><div id="c-beta"></div>
-        <p class="cap">관대함은 aspect마다 0.46~0.67배만 반영됩니다. location은 사용자 성향보다 호텔 자체의 영향이 커서 가장 작습니다.</p></div>
-      <div class="panel"><h3>페르소나 수 K 비교 (val)</h3><div class="tbl"><table id="t-k"></table></div>
-        <p class="cap">K를 늘려도 val RMSE 차이가 0.0004 이내라, 가장 단순한 K=2를 선택했습니다.</p></div>
+      <div class="panel"><h3>Per-aspect leniency coefficient β (val)</h3><div id="c-beta"></div>
+        <p class="cap">Only 0.46~0.67 times the leniency carries over to each aspect. location is smallest because the hotel itself matters more there than the user's tendency.</p></div>
+      <div class="panel"><h3>Number of personas K (val)</h3><div class="tbl"><table id="t-k"></table></div>
+        <p class="cap">Increasing K changes val RMSE by less than 0.0004, so the simplest K=2 was chosen.</p></div>
     </div>
-    <div class="panel"><h3>선택된 페르소나 (M=30, K=2)</h3>
+    <div class="panel"><h3>Selected personas (M=30, K=2)</h3>
       <div class="tbl"><table id="t-devp"></table></div>
-      <p class="cap">까다로움은 호텔 평균 대비 점수 차이(점)입니다. +는 그 aspect를 다른 사람보다 박하게 평가한다는 뜻입니다. 서비스 깐깐형은 전반적으로 박하고(관대함 −0.08), 수면 깐깐형은 후합니다(+0.07). 사용자별 배정은 <code>data/pipeline/user_personas_dev_tuned.csv</code>에 있습니다.</p></div>
+      <p class="cap">Strictness is the score difference (points) from the hotel mean. + means the user rates that aspect more harshly than others. "Strict on service" is harsh overall (leniency −0.08), "Strict on sleep" is generous (+0.07). The per-user assignment is in <code>data/pipeline/user_personas_dev_tuned.csv</code>.</p></div>
   </section>
 
   <section id="rating">
-    <div class="sec-head"><div class="row"><h2>06 · 평점 예측</h2></div>
-      <p class="lede">모든 사용자의 test 리뷰 평점을 예측한 오차입니다. 낮을수록 좋습니다.</p></div>
+    <div class="sec-head"><div class="row"><h2>06 · Rating prediction</h2></div>
+      <p class="lede">Error of predicting the ratings of all users' test reviews. Lower is better.</p></div>
     <div class="grid2">
       <div class="panel"><h3>test RMSE</h3><div id="c-rmse"></div>
-        <p class="cap">점선은 기준선(μ+b_u+b_i). 개선한 ItemKNN은 기준선과 같은 수준이고, 기존 ItemKNN은 평균 예측보다도 나빴습니다.</p></div>
-      <div class="panel"><h3>MF 학습 곡선</h3>
+        <p class="cap">The dashed line is the baseline (μ+b_u+b_i). The improved ItemKNN is on par with the baseline; the original ItemKNN was worse than even the mean prediction.</p></div>
+      <div class="panel"><h3>MF learning curve</h3>
         <div class="legend"><span><i style="background:var(--accent)"></i>val</span><span><i style="background:var(--mark)"></i>train</span></div>
         <div id="c-mf"></div>
-        <p class="cap">val RMSE가 15 epoch에서 가장 낮아(0.876) 그 시점의 파라미터를 씁니다. 이후 3 epoch 연속 나빠져 조기 종료했습니다.</p></div>
+        <p class="cap">val RMSE is lowest at epoch 15 (0.876), so the parameters from that point are used. It got worse for 3 consecutive epochs afterwards and training stopped early.</p></div>
     </div>
     <div class="tbl panel"><table id="t-rating"></table></div>
     <ul class="points">
-      <li>평점 하이브리드(MF 0.8 + 까다로움 콘텐츠 0.2)가 가장 좋고(0.906), MF 단독(0.907)과 기준선(0.909)이 뒤따릅니다. 차이가 작은 것은 사용자당 리뷰가 평균 7건이라 개인화로 얻을 정보가 적기 때문입니다.</li>
-      <li>ItemKNN은 기준 예측을 사용자 평균에서 μ+b_u+b_i로 바꿔 RMSE 1.034 → 0.909가 됐습니다. 다만 예측할 호텔의 이웃을 사용자가 평가한 경우가 23%뿐이라 나머지는 기준 예측을 그대로 씁니다.</li>
+      <li>The rating hybrid (MF 0.8 + strictness content 0.2) is best (0.906), followed by MF alone (0.907) and the baseline (0.909). The gaps are small because users have 7 reviews on average, leaving little to gain from personalization.</li>
+      <li>Changing ItemKNN's baseline prediction from the user mean to μ+b_u+b_i took RMSE from 1.034 to 0.909. However, the user has rated a neighbor of the target hotel in only 23% of cases, so the rest fall back to the baseline prediction.</li>
     </ul>
   </section>
 
   <section id="topn">
-    <div class="sec-head"><div class="row"><h2>06·07 · Top-N 추천</h2></div>
-      <p class="lede">정답 호텔(사용자가 실제로 다음에 간 호텔) 1개를 후보와 섞어 상위 10개 안에 드는 비율(HR@10)을 봅니다. 후보를 전 세계에서 무작위로 뽑는 경우와, 정답과 같은 도시에서 뽑는 경우를 함께 보고합니다.</p></div>
+    <div class="sec-head"><div class="row"><h2>06·07 · Top-N recommendation</h2></div>
+      <p class="lede">The correct hotel (the one the user actually went to next) is mixed with candidates, and the share ranked in the top 10 (HR@10) is measured. Both random candidates from around the world and candidates from the same city as the correct hotel are reported.</p></div>
     <div class="grid2">
-      <div class="panel"><h3>무작위 후보 (정답 1 + 99) · 사용자 20,000명</h3><div id="c-topn-rand"></div>
-        <p class="cap">점선은 무작위로 순위를 매길 때(0.10).</p></div>
-      <div class="panel"><h3>같은 도시 후보 (정답 1 + 49) · 사용자 4,975명</h3><div id="c-topn-city"></div>
-        <p class="cap">점선은 무작위로 순위를 매길 때(0.20). 호텔이 50개 이상인 도시의 사용자만 평가됩니다.</p></div>
+      <div class="panel"><h3>Random candidates (1 correct + 99) · 20,000 users</h3><div id="c-topn-rand"></div>
+        <p class="cap">The dashed line is random ranking (0.10).</p></div>
+      <div class="panel"><h3>Same-city candidates (1 correct + 49) · 4,975 users</h3><div id="c-topn-city"></div>
+        <p class="cap">The dashed line is random ranking (0.20). Only users in cities with 50+ hotels are evaluated.</p></div>
     </div>
     <div class="grid2">
-      <div class="panel"><h3>사용자 이력(train 리뷰 수)별 HR@10, 무작위 후보</h3>
+      <div class="panel"><h3>HR@10 by user history (train reviews), random candidates</h3>
         <div class="legend" id="lg-act"></div><div id="c-act"></div>
-        <p class="cap">ItemKNN은 이력이 많을수록 좋아져 5건 이상부터 인기도를 넘습니다. 콘텐츠 기반은 이력이 적을수록 약간 낫습니다.</p></div>
-      <div class="panel"><h3>ItemKNN 이웃 수(k)별 val HR@10 (07)</h3><div id="c-knn"></div>
-        <p class="cap">순위는 사용자가 다녀간 호텔들과의 공동 방문 유사도 합으로 매깁니다. 이웃이 많을수록 사용자 이력과 겹치는 비율이 7% → 23%로 늘어 순위가 좋아집니다. 기존판(사용자 평균 기준, k=50)은 0.079였습니다.</p></div>
+        <p class="cap">ItemKNN improves with more history and beats popularity from 5 reviews on. Content-based is slightly better the less history there is.</p></div>
+      <div class="panel"><h3>val HR@10 by ItemKNN number of neighbors (k) (07)</h3><div id="c-knn"></div>
+        <p class="cap">Ranking uses the sum of co-visit similarities to the hotels the user visited. More neighbors raise the overlap with the user's history from 7% to 23% and improve the ranking. The original version (user-mean baseline, k=50) scored 0.079.</p></div>
     </div>
-    <div class="panel"><h3>하이브리드 가중치 λ 선택 (val)</h3>
-      <p class="cap">하이브리드를 목적별로 둘로 나눴습니다. <b>평점 하이브리드</b> = λ·MF + (1−λ)·까다로움 콘텐츠, λ는 val RMSE로 선택. <b>순위 하이브리드</b> = λ·ItemKNN + (1−λ)·까다로움 콘텐츠(두 점수를 사용자의 후보 안에서 표준화한 뒤 합산), λ는 val NDCG@10으로 선택. 두 하이브리드 모두 λ=0.8로 CF와 콘텐츠가 실제로 섞였습니다. MF와 콘텐츠를 NDCG로 결합하면 둘 다 순위에 약해 λ=0(콘텐츠만)이 선택됐기 때문에 이렇게 나눴습니다.</p>
+    <div class="panel"><h3>Hybrid weight λ selection (val)</h3>
+      <p class="cap">The hybrid is split in two by purpose. <b>Rating hybrid</b> = λ·MF + (1−λ)·strictness content, λ chosen by val RMSE. <b>Ranking hybrid</b> = λ·ItemKNN + (1−λ)·strictness content (both scores standardized within the user's candidates, then summed), λ chosen by val NDCG@10. Both hybrids use λ=0.8, so CF and content actually mix. It was split this way because combining MF and content by NDCG chose λ=0 (content only), since both are weak at ranking.</p>
       <div class="grid2" style="gap:12px"><div id="c-lam-ndcg"></div><div id="c-lam-rmse"></div></div></div>
     <div class="tbl panel"><table id="t-topn"></table></div>
   </section>
 
   <section id="link">
-    <div class="sec-head"><div class="row"><h2>06 · 편차 기반 선호의 추천 연결</h2></div>
-      <p class="lede">04·05의 관대함·까다로움·페르소나를 06의 추천 모델에 넣었습니다. 콘텐츠 기반의 aspect 가중치를 사용자가 까다롭게 보는 aspect 쪽으로 기울이고(가중치 ∝ 전역 가중치 × exp(τ × 까다로움)), 예측 평점에 κ × 관대함을 더합니다. 이력이 적은 사용자(train 5건 미만, 42.6%)는 개인 대신 페르소나의 까다로움을 쓰는 변형도 비교했습니다.</p></div>
+    <div class="sec-head"><div class="row"><h2>06 · Plugging the deviation-based preferences into recommendation</h2></div>
+      <p class="lede">The leniency, strictness and personas from 04·05 were put into the recommendation models of 06. The content-based aspect weights are tilted toward the aspects the user is strict about (weight ∝ global weight × exp(τ × strictness)), and κ × leniency is added to the predicted rating. A variant that uses the persona's strictness instead of the personal one for users with little history (fewer than 5 train reviews, 42.6%) was also compared.</p></div>
     <div class="grid2">
-      <div class="panel"><h3>까다로움 반영 강도 τ별 val NDCG@10</h3><div id="c-tau"></div>
-        <p class="cap">τ=160에서 가장 높습니다(0.0729). 이때 사용자가 가장 까다롭게 보는 aspect 하나가 가중치의 약 89%를 차지해, "가장 깐깐한 aspect 위주로 호텔을 고르는" 방식에 가깝습니다. 관대함 계수 κ는 0.51입니다.</p></div>
-      <div class="panel"><h3>이력이 20건 이상인 사용자의 HR@10 (무작위 후보)</h3><div id="c-heavy"></div>
-        <p class="cap">까다로움 반영 효과는 리뷰를 많이 남긴 사용자에서 가장 큽니다(0.110 → 0.119~0.123). 이력이 3~4건인 사용자에서는 0.141 → 0.142로 거의 같습니다.</p></div>
+      <div class="panel"><h3>val NDCG@10 by strictness strength τ</h3><div id="c-tau"></div>
+        <p class="cap">Highest at τ=160 (0.0729). There the single aspect the user is strictest about takes about 89% of the weight, close to "choosing hotels mainly on the strictest aspect". The leniency coefficient κ is 0.51.</p></div>
+      <div class="panel"><h3>HR@10 of users with 20+ reviews (random candidates)</h3><div id="c-heavy"></div>
+        <p class="cap">The strictness effect is largest for users who wrote many reviews (0.110 → 0.119~0.123). For users with 3~4 reviews it is almost unchanged, 0.141 → 0.142.</p></div>
     </div>
     <div class="tbl panel"><table id="t-link"></table>
-      <p class="cap">평점 RMSE는 0.952 → 0.931로 좋아졌지만 대부분 관대함 보정 덕분이고, MF·Baseline(0.907~0.909)보다는 여전히 높습니다. 순위는 무작위 후보에서 소폭 오르고(HR@5 +11%), 같은 도시 후보에서는 차이가 없습니다. PersonaPopularity는 회귀·편차 모두 인기도와 비슷합니다.</p></div>
+      <p class="cap">Rating RMSE improved from 0.952 to 0.931, mostly thanks to the leniency correction, but is still higher than MF and Baseline (0.907~0.909). Ranking improves slightly on random candidates (HR@5 +11%) and not at all on same-city candidates. PersonaPopularity, regression or deviation, is similar to popularity.</p></div>
   </section>
 
   <section id="kaggle-text">
-    <div class="sec-head"><div class="row"><h2>08~10 · Kaggle 텍스트 검증</h2></div>
-      <p class="lede">Booking.com 리뷰 1건을 신규 사용자 1명으로 보고, 긍정·부정 리뷰에서 aspect 키워드 언급을 셌습니다 (리뷰 466,835건, 90.6%에서 언급 발견).</p></div>
-    <div class="panel"><h3>여행 유형별 aspect 언급 비율 − 전체 평균 (%p)</h3>
-      <div class="legend"><span><i class="dot" style="background:var(--div-pos)"></i>더 많이 언급</span><span><i class="dot" style="background:var(--div-neg)"></i>덜 언급</span></div>
+    <div class="sec-head"><div class="row"><h2>08~10 · Kaggle text validation</h2></div>
+      <p class="lede">Each Booking.com review was treated as one new user, and aspect keyword mentions were counted in the positive and negative reviews (466,835 reviews, mentions found in 90.6%).</p></div>
+    <div class="panel"><h3>Aspect mention share by trip type − overall average (pp)</h3>
+      <div class="legend"><span><i class="dot" style="background:var(--div-pos)"></i>mentioned more</span><span><i class="dot" style="background:var(--div-neg)"></i>mentioned less</span></div>
       <div class="tbl"><table id="t-mention"></table></div>
-      <p class="cap">가족 여행객은 location을, 출장·혼자 여행객은 rooms·sleep_quality·value를 상대적으로 더 언급합니다. Travelers with friends는 1,930건으로 표본이 작습니다.</p></div>
-    <div class="panel"><h3>호텔 aspect 평판 점수와 리뷰어 점수의 스피어만 상관</h3>
+      <p class="cap">Families mention location relatively more; business and solo travelers mention rooms, sleep_quality and value more. Travelers with friends is a small sample of 1,930 reviews.</p></div>
+    <div class="panel"><h3>Spearman correlation of hotel aspect reputation scores with reviewer scores</h3>
       <div class="tbl"><table id="t-gen"></table></div>
-      <p class="cap">HotelRec에서 배운 전역 가중치가 동일 가중보다 모든 여행 유형에서 상관이 높습니다(0.274 → 0.301). 회귀 기반 페르소나 가중치는 전역 가중치와 거의 같습니다.</p></div>
+      <p class="cap">The global weights learned on HotelRec correlate better than equal weights for every trip type (0.274 → 0.301). The regression-based persona weights are almost the same as the global weights.</p></div>
     <div class="grid2">
-      <div class="panel"><h3>키워드를 하나 뺄 때 결과가 바뀌는 정도 (09)</h3><div id="c-sens"></div>
-        <p class="cap">여행 유형별 언급 편차가 최대 몇 %p 바뀌는지입니다. location과 clean 두 단어가 각 aspect 언급의 약 79%를 차지해 결과를 가장 크게 좌우합니다.</p></div>
-      <div class="panel"><h3>키워드 사전 수정안 (10)</h3>
+      <div class="panel"><h3>How much the result changes when one keyword is removed (09)</h3><div id="c-sens"></div>
+        <p class="cap">The largest change (pp) in the mention deviation by trip type. The two words location and clean account for about 79% of their aspects' mentions and drive the result the most.</p></div>
+      <div class="panel"><h3>Revised keyword lexicon (10)</h3>
         <ul class="points">
-          <li><b>제거 4개</b>: bed·beds(rooms, 수면과 겹침), smell(냄새가 좋다/나쁘다 구분 불가), cheap(가격보다 품질 불만에 쓰임)</li>
-          <li><b>추가 21개</b>: service에 waiter·manager·housekeeping 등, value에 overcharged·reasonable 등, sleep_quality에 thin walls·uncomfortable·snoring 등</li>
-          <li><b>결론 유지</b>: 사전을 바꿔도 여행 유형별 가장 많이 언급되는 aspect는 8개 그룹 중 7개, 가장 적게 언급되는 aspect는 8개 모두 같습니다. 바뀐 1개는 Solo traveler (sleep_quality → rooms)입니다.</li>
+          <li><b>4 removed</b>: bed·beds (rooms, overlaps with sleep), smell (cannot tell good from bad smells), cheap (used for quality complaints rather than price)</li>
+          <li><b>21 added</b>: waiter·manager·housekeeping etc. to service, overcharged·reasonable etc. to value, thin walls·uncomfortable·snoring etc. to sleep_quality</li>
+          <li><b>Conclusions hold</b>: with the revised lexicon the most-mentioned aspect per trip type is the same in 7 of 8 groups and the least-mentioned in all 8. The one change is Solo traveler (sleep_quality → rooms).</li>
         </ul>
-        <p class="cap">목록은 <code>outputs/10_lexicon_changes.csv</code>, 강건성은 <code>10_lexicon_robustness.csv</code>에 있습니다.</p></div>
+        <p class="cap">The list is in <code>outputs/10_lexicon_changes.csv</code>, the robustness in <code>10_lexicon_robustness.csv</code>.</p></div>
     </div>
-    <div class="panel"><h3>페르소나 종류별 Kaggle 검증 (10, 리뷰 전체 텍스트로 배정)</h3>
+    <div class="panel"><h3>Kaggle validation by persona set (10, assigned by all review text)</h3>
       <div class="tbl"><table id="t-pcomp"></table></div>
-      <p class="cap">여행자 유형과 배정된 페르소나의 연관(Cramér's V)은 어느 조합이든 0.03~0.05로 약합니다. 편차 기반(04, M=3) 페르소나 가중치가 리뷰어 점수와의 상관이 가장 높지만(0.312), 전역 가중치(0.301)와의 차이는 작습니다.</p></div>
+      <p class="cap">The association between traveler type and assigned persona (Cramér's V) is weak for every combination, 0.03~0.05. The deviation-based (04, M=3) persona weights correlate best with reviewer scores (0.312), but the gap to the global weights (0.301) is small.</p></div>
   </section>
 
   <section id="kaggle-match">
-    <div class="sec-head"><div class="row"><h2>11 · Kaggle 호텔 매칭</h2></div>
-      <p class="lede">같은 도시 안에서 호텔명으로 두 데이터의 같은 호텔을 찾고, HotelRec 모델이 신규 사용자에게 내놓는 점수(사용자 항 0)를 Booking.com 실제 점수와 비교했습니다.</p></div>
+    <div class="sec-head"><div class="row"><h2>11 · Kaggle hotel matching</h2></div>
+      <p class="lede">The same hotels in both datasets were found by hotel name within the same city, and the scores the HotelRec models give a new user (user terms 0) were compared with the actual Booking.com scores.</p></div>
     <div class="kpis">
-      <div class="kpi"><span class="label">매칭된 호텔</span><span class="value">505</span><span class="note">정확 일치 456 · 유사 일치 49 (Kaggle 1,494개 중)</span></div>
-      <div class="kpi"><span class="label">매칭 호텔의 Booking.com 리뷰</span><span class="value">203,215</span><span class="note">전체 515,212건 중</span></div>
-      <div class="kpi"><span class="label">평균 점수 (5점 척도)</span><span class="value">4.21 · 4.11</span><span class="note">Booking.com · HotelRec 학습 데이터</span></div>
+      <div class="kpi"><span class="label">Matched hotels</span><span class="value">505</span><span class="note">456 exact · 49 fuzzy (of 1,494 Kaggle hotels)</span></div>
+      <div class="kpi"><span class="label">Booking.com reviews of matched hotels</span><span class="value">203,215</span><span class="note">of 515,212 in total</span></div>
+      <div class="kpi"><span class="label">Mean score (5-point scale)</span><span class="value">4.21 · 4.11</span><span class="note">Booking.com · HotelRec training data</span></div>
     </div>
     <div class="grid2">
-      <div class="panel"><h3>호텔 평균 점수와의 피어슨 상관</h3><div id="c-match"></div>
-        <p class="cap">TripAdvisor에서 배운 호텔 점수가 Booking.com 호텔 평균과 0.74로 맞습니다. 리뷰 단위 상관(0.28)은 리뷰어 개인차 때문에 낮습니다.</p></div>
-      <div class="panel"><h3>도시별 매칭 호텔 수</h3><div id="c-city"></div></div>
+      <div class="panel"><h3>Pearson correlation with hotel mean scores</h3><div id="c-match"></div>
+        <p class="cap">The hotel scores learned on TripAdvisor match the Booking.com hotel means with 0.74. The review-level correlation (0.28) is low because of differences between reviewers.</p></div>
+      <div class="panel"><h3>Matched hotels per city</h3><div id="c-city"></div></div>
     </div>
     <div class="tbl panel"><table id="t-match"></table></div>
   </section>
 
   <section id="evolution">
-    <div class="sec-head"><div class="row"><h2>개선 과정</h2></div>
-      <p class="lede">처음 시도한 방법에서 어떤 문제가 보였고, 어떻게 바꿔 지금 값에 이르렀는지입니다. 설정은 모두 val로 고르고 test는 따로 보고했습니다. 자세한 표는 <code>Pipeline/README.md</code>의 "7. 개선 과정"에 있습니다.</p></div>
+    <div class="sec-head"><div class="row"><h2>How the methods were improved</h2></div>
+      <p class="lede">What problems showed up with the first approaches, and how they were changed to reach the current values. All settings were chosen on val; test was reported separately. Detailed tables are in "7. How the methods were improved" of <code>Pipeline/README.md</code>.</p></div>
     <div class="evo">
-      <div class="panel"><h3>① 데이터 매핑 (전처리)</h3>
+      <div class="panel"><h3>① Data mapping (preprocessing)</h3>
         <ol>
-          <li class=""><span class="stage">처음</span><span>팀 Drive의 <code>hotel_map.csv</code>(162,023행) 사용 → 도시명이 해당 호텔 리뷰에 나오는 비율 <span class="v">3.9%</span></span></li>
-          <li class=""><span class="stage">원인</span><span>샘플링 전 단계의 다른 실행에서 나온 매핑. <code>user_map.csv</code>도 없어 검증 불가</span></li>
-          <li class=""><span class="stage">개선</span><span>원본으로 전처리를 다시 실행 → train/partial은 공유 파일과 바이트 단위로 동일, 매핑 2개만 교체</span></li>
-          <li class="now"><span class="stage">현재</span><span>도시명 일치 <span class="v">87.9%</span>, 검증 <span class="v">24/24</span> PASS. 같은 도시 평가와 Kaggle 매칭이 가능해짐</span></li>
+          <li class=""><span class="stage">First</span><span>used <code>hotel_map.csv</code> (162,023 rows) from the team Drive → city name appears in that hotel's reviews <span class="v">3.9%</span> of the time</span></li>
+          <li class=""><span class="stage">Cause</span><span>a mapping from a different run before the sampling step. <code>user_map.csv</code> was also missing, so no validation was possible</span></li>
+          <li class=""><span class="stage">Fix</span><span>reran the preprocessing on the raw data → train/partial byte-identical to the shared files, only the 2 mappings replaced</span></li>
+          <li class="now"><span class="stage">Now</span><span>city name match <span class="v">87.9%</span>, validation <span class="v">24/24</span> PASS. The same-city evaluation and Kaggle matching became possible</span></li>
         </ol></div>
-      <div class="panel"><h3>② Top-N 평가 방식</h3>
+      <div class="panel"><h3>② Top-N evaluation</h3>
         <ol>
-          <li class=""><span class="stage">처음</span><span>정답 1 + 전 세계 무작위 호텔 99개 → 인기도 HR@10 <span class="v">0.328</span>가 개인화 모델(MF 0.117)의 2배 이상</span></li>
-          <li class=""><span class="stage">원인</span><span>무작위 후보는 대부분 다른 지역의 비인기 호텔이라 인기도만으로 구별됨</span></li>
-          <li class=""><span class="stage">개선</span><span>매핑을 고친 뒤 같은 도시 후보(1+49) 평가 추가</span></li>
-          <li class="now"><span class="stage">현재</span><span>두 방식 함께 보고. 같은 도시에서는 인기도 <span class="v">0.479</span>, ItemKNN <span class="v">0.392</span></span></li>
+          <li class=""><span class="stage">First</span><span>1 correct + 99 random hotels from around the world → popularity HR@10 <span class="v">0.328</span>, more than twice the personalized models (MF 0.117)</span></li>
+          <li class=""><span class="stage">Cause</span><span>random candidates are mostly unpopular hotels in other regions, told apart by popularity alone</span></li>
+          <li class=""><span class="stage">Fix</span><span>after fixing the mapping, added the same-city candidates (1+49) evaluation</span></li>
+          <li class="now"><span class="stage">Now</span><span>both reported. In the same city: popularity <span class="v">0.479</span>, ItemKNN <span class="v">0.392</span></span></li>
         </ol></div>
-      <div class="panel"><h3>③ 메모리 기반 CF: Item-kNN</h3>
+      <div class="panel"><h3>③ Memory-based CF: Item-kNN</h3>
         <ol>
-          <li class=""><span class="stage">처음</span><span>adjusted cosine(제안서 방식): val RMSE <span class="v">1.012</span>로 평균 예측(0.974)보다 나쁨, HR@10 <span class="v">0.049</span></span></li>
-          <li class=""><span class="stage">개선 1</span><span>기준 예측을 μ+b_u+b_i로(KNNBaseline): RMSE <span class="v">0.877</span></span></li>
-          <li class=""><span class="stage">개선 2</span><span>순위용 공동 방문 점수: HR@10 <span class="v">0.216</span></span></li>
-          <li class=""><span class="stage">개선 3</span><span>이웃 수 50 → 2000 (이웃 겹침 7% → 23%): HR@10 <span class="v">0.371</span></span></li>
-          <li class="now"><span class="stage">현재</span><span>test RMSE 1.034 → <span class="v">0.909</span>, HR@10 0.035 → <span class="v">0.349</span> (인기도 0.328을 넘음)</span></li>
+          <li class=""><span class="stage">First</span><span>adjusted cosine (as in the proposal): val RMSE <span class="v">1.012</span>, worse than the mean prediction (0.974), HR@10 <span class="v">0.049</span></span></li>
+          <li class=""><span class="stage">Fix 1</span><span>baseline prediction μ+b_u+b_i (KNNBaseline): RMSE <span class="v">0.877</span></span></li>
+          <li class=""><span class="stage">Fix 2</span><span>co-visit score for ranking: HR@10 <span class="v">0.216</span></span></li>
+          <li class=""><span class="stage">Fix 3</span><span>neighbors 50 → 2000 (neighbor overlap 7% → 23%): HR@10 <span class="v">0.371</span></span></li>
+          <li class="now"><span class="stage">Now</span><span>test RMSE 1.034 → <span class="v">0.909</span>, HR@10 0.035 → <span class="v">0.349</span> (beats popularity 0.328)</span></li>
         </ol></div>
-      <div class="panel"><h3>④ 사용자 aspect 선호와 페르소나</h3>
+      <div class="panel"><h3>④ User aspect preferences and personas</h3>
         <ol>
-          <li class=""><span class="stage">처음</span><span>회귀 기반 개인 가중치(02): 개인화를 강하게 할수록 val 오차 증가, 페르소나 3개 차이 약 <span class="v">0.003</span></span></li>
-          <li class=""><span class="stage">원인</span><span>사용자당 세부 평점 완전 리뷰가 평균 3.7건, aspect끼리 상관이 높음</span></li>
-          <li class=""><span class="stage">개선 1</span><span>호텔 평균 대비 편차로 관대함·까다로움 추정(04): test 세부 평점 RMSE 0.905 → <span class="v">0.890</span></span></li>
-          <li class=""><span class="stage">개선 2</span><span>축소 강도 M=3 → 30, aspect별 관대함 β(05): <span class="v">0.877</span>, 서비스·수면 깐깐형 페르소나</span></li>
-          <li class=""><span class="stage">개선 3</span><span>추천에 연결, τ 범위를 넓혀 <span class="v">τ=160</span> 선택(06)</span></li>
-          <li class="now"><span class="stage">현재</span><span>콘텐츠 기반 RMSE 0.952 → <span class="v">0.931</span>, 무작위 HR@5 0.070 → <span class="v">0.078</span>. 같은 도시에서는 차이 없음</span></li>
+          <li class=""><span class="stage">First</span><span>regression-based personal weights (02): the stronger the personalization, the larger the val error; the 3 personas differ by about <span class="v">0.003</span></span></li>
+          <li class=""><span class="stage">Cause</span><span>users have 3.7 reviews with complete sub-ratings on average, and the aspects are highly correlated</span></li>
+          <li class=""><span class="stage">Fix 1</span><span>leniency and strictness from the deviation from the hotel mean (04): test sub-rating RMSE 0.905 → <span class="v">0.890</span></span></li>
+          <li class=""><span class="stage">Fix 2</span><span>shrinkage strength M=3 → 30, per-aspect leniency β (05): <span class="v">0.877</span>, "Strict on service" and "Strict on sleep" personas</span></li>
+          <li class=""><span class="stage">Fix 3</span><span>plugged into recommendation, τ range widened and <span class="v">τ=160</span> chosen (06)</span></li>
+          <li class="now"><span class="stage">Now</span><span>content-based RMSE 0.952 → <span class="v">0.931</span>, random HR@5 0.070 → <span class="v">0.078</span>. No difference in the same city</span></li>
         </ol></div>
-      <div class="panel"><h3>⑤ 하이브리드</h3>
+      <div class="panel"><h3>⑤ Hybrid</h3>
         <ol>
-          <li class=""><span class="stage">처음</span><span>λ·MF + (1−λ)·콘텐츠, λ를 val NDCG로 선택 → <span class="v">λ=0</span>, 콘텐츠 기반과 같아짐</span></li>
-          <li class=""><span class="stage">원인</span><span>MF와 콘텐츠 모두 순위에 약함. 반면 val RMSE는 MF를 90% 섞을 때가 MF 단독보다 낮았음</span></li>
-          <li class=""><span class="stage">개선</span><span>목적별 분리: 평점 = MF + 콘텐츠(RMSE로 λ), 순위 = ItemKNN + 콘텐츠(사용자별 표준화, NDCG로 λ)</span></li>
-          <li class="now"><span class="stage">현재</span><span>두 하이브리드 모두 <span class="v">λ=0.8</span>. 평점 RMSE <span class="v">0.906</span>(최고), 순위는 ItemKNN과 같은 수준(NDCG@10 0.211)</span></li>
+          <li class=""><span class="stage">First</span><span>λ·MF + (1−λ)·content, λ chosen by val NDCG → <span class="v">λ=0</span>, same as content-based</span></li>
+          <li class=""><span class="stage">Cause</span><span>MF and content are both weak at ranking, while val RMSE with 90% MF was lower than MF alone</span></li>
+          <li class=""><span class="stage">Fix</span><span>split by purpose: rating = MF + content (λ by RMSE), ranking = ItemKNN + content (per-user standardization, λ by NDCG)</span></li>
+          <li class="now"><span class="stage">Now</span><span>both hybrids at <span class="v">λ=0.8</span>. Rating RMSE <span class="v">0.906</span> (best), ranking on par with ItemKNN (NDCG@10 0.211)</span></li>
         </ol></div>
-      <div class="panel"><h3>⑥ Kaggle 일반화 검증</h3>
+      <div class="panel"><h3>⑥ Kaggle generalization check</h3>
         <ol>
-          <li class=""><span class="stage">처음</span><span>키워드 사전으로 aspect 언급 분석(08): 여행 유형별 차이는 뚜렷, 페르소나 연관은 약함(V <span class="v">0.034</span>)</span></li>
-          <li class=""><span class="stage">점검</span><span>키워드 민감도(09): <code>location</code>, <code>clean</code>이 언급의 약 79%, 빼면 최대 4.7%p 변화</span></li>
-          <li class=""><span class="stage">개선</span><span>수정 사전(제거 4, 추가 21)으로 재비교(10): 여행 유형별 결론 유지, 페르소나 연관은 여전히 약함</span></li>
-          <li class="now"><span class="stage">현재</span><span>같은 호텔 505개를 매칭(11): HotelRec 호텔 점수와 Booking.com 호텔 평균의 상관 <span class="v">0.74</span></span></li>
+          <li class=""><span class="stage">First</span><span>aspect mention analysis with a keyword lexicon (08): clear differences by trip type, weak persona association (V <span class="v">0.034</span>)</span></li>
+          <li class=""><span class="stage">Audit</span><span>keyword sensitivity (09): <code>location</code> and <code>clean</code> are about 79% of the mentions; removing one changes the result by up to 4.7pp</span></li>
+          <li class=""><span class="stage">Fix</span><span>re-compared with the revised lexicon (4 removed, 21 added) (10): trip-type conclusions hold, persona association still weak</span></li>
+          <li class="now"><span class="stage">Now</span><span>matched 505 shared hotels (11): HotelRec hotel scores correlate <span class="v">0.74</span> with Booking.com hotel means</span></li>
         </ol></div>
     </div>
   </section>
 
   <section id="next">
-    <div class="sec-head"><h2>한계와 다음 단계</h2></div>
+    <div class="sec-head"><h2>Limitations and next steps</h2></div>
     <ul class="points">
-      <li><b>하이브리드의 효과</b>: 평점 하이브리드의 개선은 0.001 수준이고, 순위 하이브리드는 test에서 ItemKNN 단독과 차이가 없습니다(콘텐츠 기반이 순위에 더해 주는 정보가 거의 없음). 같은 도시 후보에서는 여전히 인기도가 가장 강합니다.</li>
-      <li><b>페르소나 활용</b>: 편차 기반 선호를 06의 추천에 연결했지만 개선 폭은 작습니다. Kaggle 신규 사용자 예측(11)에는 사용자 이력이 없어 연결하지 않았습니다.</li>
-      <li><b>평가 범위</b>: 같은 도시 평가는 대도시 사용자(표본의 25%)만, Kaggle 매칭은 유럽 6개 도시 505개 호텔만 포함합니다.</li>
-      <li><b>수작업 규칙</b>: aspect 키워드 사전(08, 수정안 10)과 호텔명 매칭 규칙(11)은 팀이 정한 것입니다. 매칭 목록은 <code>outputs/11_matched_hotels.csv</code>에서 확인할 수 있습니다.</li>
-      <li><b>편차의 기준</b>: 04의 호텔 평균에는 사용자 자신의 train 리뷰도 포함되어, 리뷰가 적은 호텔에서는 편차가 약간 작게 잡힙니다.</li>
+      <li><b>Effect of the hybrids</b>: the rating hybrid improves by about 0.001, and the ranking hybrid does not differ from ItemKNN alone on test (content-based adds almost nothing to ranking). Popularity is still strongest on same-city candidates.</li>
+      <li><b>Use of personas</b>: the deviation-based preferences are plugged into 06's recommendation, but the improvements are small. They are not plugged into the Kaggle new-user prediction (11) because there is no user history.</li>
+      <li><b>Evaluation coverage</b>: the same-city evaluation covers only users in large cities (25% of the sample), and the Kaggle matching only 505 hotels in 6 European cities.</li>
+      <li><b>Hand-made rules</b>: the aspect keyword lexicon (08, revised in 10) and the hotel name matching rules (11) were set by the team. The match list can be checked in <code>outputs/11_matched_hotels.csv</code>.</li>
+      <li><b>Deviation baseline</b>: the hotel means in 04 include the user's own train reviews, so for hotels with few reviews the deviation comes out slightly smaller.</li>
     </ul>
     <footer>
-      <span>코드와 실행 방법: GitHub <code>gcu-ML05/ML05_Hotel_Recommend</code>의 <code>pipeline</code> 브랜치, <code>Pipeline/README.md</code></span>
-      <span>참고: Antognini &amp; Faltings (2020) HotelRec · Sarwar et al. (2001) · Deshpande &amp; Karypis (2004) · Koren et al. (2009) · Koren (2010)</span>
+      <span>Code and how to run: GitHub <code>gcu-ML05/ML05_Hotel_Recommend</code>, <code>pipeline-en</code> branch, <code>Pipeline/README.md</code></span>
+      <span>References: Antognini &amp; Faltings (2020) HotelRec · Sarwar et al. (2001) · Deshpande &amp; Karypis (2004) · Koren et al. (2009) · Koren (2010)</span>
     </footer>
   </section>
 </div>
@@ -400,23 +400,23 @@ code { font-family: var(--font-data); font-size: .92em; }
 <script>
 const D = {
   rating: [
-    // [모델, val RMSE, test RMSE, test MAE]
+    // [model, val RMSE, test RMSE, test MAE]
     ["GlobalMean", 0.9743, 1.0040, 0.7844], ["Baseline (μ+b_u+b_i)", 0.8775, 0.9087, 0.6996],
-    ["ItemKNN (기존)", 1.0122, 1.0341, 0.7724], ["ItemKNN (개선)", 0.8771, 0.9086, 0.6995],
-    ["MF", 0.8760, 0.9068, 0.6926], ["Hybrid-평점 (MF+Content)", 0.8747, 0.9060, 0.6939], ["Content (aspect, 전역 w)", 0.9199, 0.9523, 0.7459],
-    ["Content (aspect, 개인 w)", 0.9207, 0.9531, 0.7466], ["Content (aspect+text)", 0.9192, 0.9515, 0.7445],
+    ["ItemKNN (original)", 1.0122, 1.0341, 0.7724], ["ItemKNN (improved)", 0.8771, 0.9086, 0.6995],
+    ["MF", 0.8760, 0.9068, 0.6926], ["Hybrid-rating (MF+Content)", 0.8747, 0.9060, 0.6939], ["Content (aspect, global w)", 0.9199, 0.9523, 0.7459],
+    ["Content (aspect, personal w)", 0.9207, 0.9531, 0.7466], ["Content (aspect+text)", 0.9192, 0.9515, 0.7445],
   ],
   topn: [
-    // [모델, 무작위 HR@10, 무작위 NDCG@10, 같은 도시 HR@10, 같은 도시 NDCG@10]
-    ["ItemKNN (개선)", 0.3492, 0.2106, 0.3916, 0.1909], ["Popularity", 0.3278, 0.1758, 0.4788, 0.2547],
-    ["PersonaPopularity (회귀)", 0.3192, 0.1723, 0.4738, 0.2513], ["PersonaPopularity (편차)", 0.3193, 0.1723, 0.4764, 0.2507],
+    // [model, random HR@10, random NDCG@10, same-city HR@10, same-city NDCG@10]
+    ["ItemKNN (improved)", 0.3492, 0.2106, 0.3916, 0.1909], ["Popularity", 0.3278, 0.1758, 0.4788, 0.2547],
+    ["PersonaPopularity (regression)", 0.3192, 0.1723, 0.4738, 0.2513], ["PersonaPopularity (deviation)", 0.3193, 0.1723, 0.4764, 0.2507],
     ["Baseline", 0.1463, 0.0727, 0.3118, 0.1521],
-    ["Hybrid-순위 (ItemKNN+Content)", 0.3474, 0.2107, 0.3885, 0.1905], ["Content (aspect+text)", 0.1347, 0.0649, 0.2957, 0.1429], ["Content (aspect, 개인 w)", 0.1232, 0.0575, 0.2882, 0.1384],
-    ["MF", 0.1170, 0.0534, 0.2850, 0.1308], ["ItemKNN (기존)", 0.0345, 0.0282, 0.0285, 0.0202],
+    ["Hybrid-ranking (ItemKNN+Content)", 0.3474, 0.2107, 0.3885, 0.1905], ["Content (aspect+text)", 0.1347, 0.0649, 0.2957, 0.1429], ["Content (aspect, personal w)", 0.1232, 0.0575, 0.2882, 0.1384],
+    ["MF", 0.1170, 0.0534, 0.2850, 0.1308], ["ItemKNN (original)", 0.0345, 0.0282, 0.0285, 0.0202],
   ],
-  actX: ["3~4건\n8,503명", "5~9건\n7,308명", "10~19건\n3,101명", "20건 이상\n1,088명"],
+  actX: ["3~4 reviews\n8,503 users", "5~9 reviews\n7,308 users", "10~19 reviews\n3,101 users", "20+ reviews\n1,088 users"],
   act: [
-    ["ItemKNN (개선)", "var(--accent)", [0.2988, 0.3623, 0.4128, 0.4724]],
+    ["ItemKNN (improved)", "var(--accent)", [0.2988, 0.3623, 0.4128, 0.4724]],
     ["Popularity", "var(--series-2)", [0.3307, 0.3310, 0.3112, 0.3300]],
     ["Content (aspect+text)", "var(--series-3)", [0.1410, 0.1334, 0.1290, 0.1103]],
     ["MF", "var(--mark)", [0.1198, 0.1145, 0.1164, 0.1131]],
@@ -441,27 +441,27 @@ const D = {
             ["Travelers with friends", 1930, [-3.589, 4.289, .439, -7.346, 7.707, -1.501]],
             ["Business trip", 73802, [-1.714, -.06, .711, 1.211, -1.006, .858]],
             ["Leisure trip", 380008, [.281, -.014, -.139, -.281, .33, -.177]]],
-  genCols: ["전체", "Couple", "Family (older)", "Family (young)", "Group", "Solo", "Friends"],
-  gen: [["동일 가중", [.274, .2659, .26, .2536, .2719, .2979, .2446]],
-        ["HotelRec 전역 가중치", [.3011, .2972, .2786, .275, .2912, .3197, .2502]],
-        ["배정된 페르소나 가중치", [.3014, .2974, .279, .2756, .2916, .32, .2511]]],
+  genCols: ["All", "Couple", "Family (older)", "Family (young)", "Group", "Solo", "Friends"],
+  gen: [["equal weights", [.274, .2659, .26, .2536, .2719, .2979, .2446]],
+        ["HotelRec global weights", [.3011, .2972, .2786, .275, .2912, .3197, .2502]],
+        ["assigned persona weights", [.3014, .2974, .279, .2756, .2916, .32, .2511]]],
   match: [["GlobalMean (μ)", .8117, .6689, null, null, null], ["Baseline (μ+b_i)", .7787, .6173, .2832, .7370, .7452],
-          ["MF (μ+b_i)", .7841, .6172, .2853, .7428, .7501], ["Content (aspect, 전역 w)", .7879, .6378, .2624, .6742, .6661], ["Hybrid-평점 (λ=0.8)", .7824, .6195, .2852, .7434, .7488]],
+          ["MF (μ+b_i)", .7841, .6172, .2853, .7428, .7501], ["Content (aspect, global w)", .7879, .6378, .2624, .6742, .6661], ["Hybrid-rating (λ=0.8)", .7824, .6195, .2852, .7434, .7488]],
   city: [["London", 182], ["Paris", 112], ["Barcelona", 78], ["Milan", 45], ["Vienna", 45], ["Amsterdam", 43]],
-  // 05_test_aspect_rmse.csv (ALL 행)
-  dev: [["호텔 평균만", 0.90523], ["+ 관대함", 0.88986], ["+ 관대함 + 페르소나 (04 원래)", 0.89059], ["+ 관대함 + 개인 까다로움 (04 원래, M=3)", 0.89553],
-        ["+ aspect별 관대함 β", 0.87843], ["+ β 관대함 + 페르소나 (K=2)", 0.87822], ["+ β 관대함 + 개인 까다로움 (M=30)", 0.87726]],
+  // 05_test_aspect_rmse.csv (ALL rows)
+  dev: [["hotel mean only", 0.90523], ["+ leniency", 0.88986], ["+ leniency + persona (04 original)", 0.89059], ["+ leniency + personal strictness (04 original, M=3)", 0.89553],
+        ["+ per-aspect leniency β", 0.87843], ["+ β leniency + persona (K=2)", 0.87822], ["+ β leniency + personal strictness (M=30)", 0.87726]],
   shrink: { x: ["1", "3", "10", "30", "100", "300"], p1: [.87571, .87571, .87571, .87571, .87571, .87571], p3: [.89372, .88116, .87482, .87435, .87506, .87546] },
   beta: [["value", .6748], ["sleep_quality", .6392], ["service", .6344], ["rooms", .6046], ["cleanliness", .5625], ["location", .4602]],
   kcmp: [[2, .14811, .3507, .86411], [3, .13951, .2373, .86400], [4, .13584, .1734, .86386], [5, .11926, .1131, .86378]],
-  devp: [["서비스 깐깐형 (위치엔 관대)", 45607, 35.1, -0.0796, 3.9997, 8.06, [.0349, -.0097, .0179, -.0098, -.0182, -.018]],
-         ["수면 깐깐형 (서비스엔 관대)", 84429, 64.9, 0.0668, 4.1749, 7.12, [-.0238, .0058, -.0151, .0065, .014, .0149]]],
+  devp: [["Strict on service (lenient on location)", 45607, 35.1, -0.0796, 3.9997, 8.06, [.0349, -.0097, .0179, -.0098, -.0182, -.018]],
+         ["Strict on sleep (lenient on service)", 84429, 64.9, 0.0668, 4.1749, 7.12, [-.0238, .0058, -.0151, .0065, .014, .0149]]],
   sens: [["location · location", 4.661], ["cleanliness · clean", 3.777], ["rooms · room", 2.393], ["service · staff", 1.554],
          ["rooms · bed", 1.393], ["rooms · rooms", 0.818], ["location · station", 0.781], ["sleep_quality · noisy", 0.583]],
-  // 10_persona_comparison.csv (전체 텍스트로 배정): [사전, 페르소나, Cramér's V, 동일 가중, 전역 가중치, 페르소나 가중치]
-  pcomp: [["원본", "회귀 기반 (02)", .0338, .2740, .3011, .3014], ["원본", "편차 기반 (04, M=3)", .0478, .2740, .3011, .3118],
-          ["원본", "편차 기반 개선 (05, M=30)", .0295, .2740, .3011, .3037], ["수정", "회귀 기반 (02)", .0373, .2672, .2967, .2970],
-          ["수정", "편차 기반 (04, M=3)", .0520, .2672, .2967, .3107], ["수정", "편차 기반 개선 (05, M=30)", .0351, .2672, .2967, .2995]],
+  // 10_persona_comparison.csv (assigned by all text): [lexicon, persona, Cramér's V, equal weights, global weights, persona weights]
+  pcomp: [["original", "regression-based (02)", .0338, .2740, .3011, .3014], ["original", "deviation-based (04, M=3)", .0478, .2740, .3011, .3118],
+          ["original", "deviation-based improved (05, M=30)", .0295, .2740, .3011, .3037], ["revised", "regression-based (02)", .0373, .2672, .2967, .2970],
+          ["revised", "deviation-based (04, M=3)", .0520, .2672, .2967, .3107], ["revised", "deviation-based improved (05, M=30)", .0351, .2672, .2967, .2995]],
 };
 
 const NS = "http://www.w3.org/2000/svg";
@@ -484,7 +484,7 @@ function ticks(min, max, n) {
   return out;
 }
 
-// 가로 막대 (0부터) 또는 점 (축 잘림 허용, dot=true)
+// horizontal bars (from 0) or dots (axis may be cut, dot=true)
 function hchart(id, rows, o) {
   const W = 620, L = o.labelW || 190, R = 56, rowH = 30, top = 8, H = top + rows.length * rowH + 28;
   const s = svg(id, W, H, o.label);
@@ -511,7 +511,7 @@ function hchart(id, rows, o) {
   });
 }
 
-// 선 차트 (범주형 x)
+// line chart (categorical x)
 function line(id, xs, series, o) {
   const W = 620, H = o.h || 260, L = 52, R = 18, T = 14, B = o.xb || 34;
   const s = svg(id, W, H, o.label);
@@ -546,98 +546,98 @@ function table(id, head, rows, numFrom, hlRow) {
     rows.map(r => `<tr class="${hlRow && hlRow(r) ? "hl" : ""}">` + r.map((c, i) => `<td class="${i >= numFrom ? "num" : ""}">${c}</td>`).join("") + "</tr>").join("") + "</tbody>";
 }
 
-// 평점 예측
+// rating prediction
 const rr = [...D.rating].sort((a, b) => a[2] - b[2]);
 hchart("c-rmse", rr.map(r => [r[0], r[2], `MAE ${f3(r[3])} · val RMSE ${f3(r[1])}`]),
-  { min: 0.88, max: 1.05, dot: true, ref: 0.9087, name: "test RMSE", hl: ["Hybrid-평점 (MF+Content)"], hl2: ["MF"], label: "모델별 test RMSE", nt: 4, tf: v => v.toFixed(3) });
+  { min: 0.88, max: 1.05, dot: true, ref: 0.9087, name: "test RMSE", hl: ["Hybrid-rating (MF+Content)"], hl2: ["MF"], label: "test RMSE by model", nt: 4, tf: v => v.toFixed(3) });
 line("c-mf", D.mf.val.map((_, i) => i + 1), [
   { n: "train", c: "var(--mark)", v: D.mf.train, mark: 3 },
   { n: "val", c: "var(--accent)", v: D.mf.val, mark: 3 }],
-  { min: 0.64, max: 0.96, name: "RMSE", label: "MF epoch별 RMSE", xEvery: 1, h: 240, marks: [{ i: 14, v: 0.8760, t: "최저 0.876 (15 epoch)" }] });
-table("t-rating", ["모델", "val RMSE", "test RMSE", "test MAE"], D.rating.map(r => [r[0], f3(r[1]), f3(r[2]), f3(r[3])]), 1, r => r[0] === "Hybrid-평점 (MF+Content)");
+  { min: 0.64, max: 0.96, name: "RMSE", label: "MF RMSE by epoch", xEvery: 1, h: 240, marks: [{ i: 14, v: 0.8760, t: "lowest 0.876 (epoch 15)" }] });
+table("t-rating", ["Model", "val RMSE", "test RMSE", "test MAE"], D.rating.map(r => [r[0], f3(r[1]), f3(r[2]), f3(r[3])]), 1, r => r[0] === "Hybrid-rating (MF+Content)");
 
 // Top-N
 const tr = [...D.topn].sort((a, b) => b[1] - a[1]);
 hchart("c-topn-rand", tr.map(r => [r[0], r[1], `NDCG@10 ${f3(r[2])}`]),
-  { min: 0, max: 0.5, ref: 0.1, name: "HR@10", hl: ["ItemKNN (개선)"], hl2: ["Popularity"], label: "무작위 후보 HR@10", nt: 5, labelW: 210 });
+  { min: 0, max: 0.5, ref: 0.1, name: "HR@10", hl: ["ItemKNN (improved)"], hl2: ["Popularity"], label: "random-candidate HR@10", nt: 5, labelW: 210 });
 const tc = [...D.topn].sort((a, b) => b[3] - a[3]);
 hchart("c-topn-city", tc.map(r => [r[0], r[3], `NDCG@10 ${f3(r[4])}`]),
-  { min: 0, max: 0.5, ref: 0.2, name: "HR@10", hl: ["ItemKNN (개선)"], hl2: ["Popularity"], label: "같은 도시 후보 HR@10", nt: 5, labelW: 210 });
+  { min: 0, max: 0.5, ref: 0.2, name: "HR@10", hl: ["ItemKNN (improved)"], hl2: ["Popularity"], label: "same-city candidate HR@10", nt: 5, labelW: 210 });
 document.getElementById("lg-act").innerHTML = D.act.map(a => `<span><i style="background:${a[1]}"></i>${a[0]}</span>`).join("");
-line("c-act", D.actX, D.act.map(a => ({ n: a[0], c: a[1], v: a[2] })), { min: 0, max: 0.5, name: "HR@10", label: "이력별 HR@10", nt: 5, xb: 48, h: 270 });
-line("c-knn", D.knn.x, [{ n: "ItemKNN (개선)", c: "var(--accent)", v: D.knn.y, extra: D.knn.cov.map(c => "이웃 겹침 " + c) }],
-  { min: 0, max: 0.4, ref: 0.0794, name: "val HR@10", label: "이웃 수별 HR@10", nt: 4, h: 240,
+line("c-act", D.actX, D.act.map(a => ({ n: a[0], c: a[1], v: a[2] })), { min: 0, max: 0.5, name: "HR@10", label: "HR@10 by history", nt: 5, xb: 48, h: 270 });
+line("c-knn", D.knn.x, [{ n: "ItemKNN (improved)", c: "var(--accent)", v: D.knn.y, extra: D.knn.cov.map(c => "neighbor overlap " + c) }],
+  { min: 0, max: 0.4, ref: 0.0794, name: "val HR@10", label: "HR@10 by number of neighbors", nt: 4, h: 240,
     marks: D.knn.y.map((v, i) => ({ i, v, t: f3(v) })) });
-line("c-lam-ndcg", D.lam.x.map(String), [{ n: "순위 하이브리드", c: "var(--accent)", v: D.lam.ndcg }],
-  { min: 0.05, max: 0.25, name: "val NDCG@10 (λ = ItemKNN 비중)", label: "순위 하이브리드 λ별 val NDCG@10", nt: 4, h: 200, xEvery: 2, tf: v => v.toFixed(2), marks: [{ i: 8, v: 0.2297, t: "λ=0.8" }] });
-line("c-lam-rmse", D.lam.x.map(String), [{ n: "평점 하이브리드", c: "var(--series-2)", v: D.lam.rmse }],
-  { min: 0.87, max: 0.91, name: "val RMSE (λ = MF 비중)", label: "평점 하이브리드 λ별 val RMSE", nt: 4, h: 200, xEvery: 2, tf: v => v.toFixed(3), marks: [{ i: 8, v: 0.8747, t: "λ=0.8" }] });
-table("t-topn", ["모델", "무작위 HR@10", "무작위 NDCG@10", "같은 도시 HR@10", "같은 도시 NDCG@10"],
-  D.topn.map(r => [r[0], f3(r[1]), f3(r[2]), f3(r[3]), f3(r[4])]), 1, r => r[0] === "ItemKNN (개선)");
+line("c-lam-ndcg", D.lam.x.map(String), [{ n: "ranking hybrid", c: "var(--accent)", v: D.lam.ndcg }],
+  { min: 0.05, max: 0.25, name: "val NDCG@10 (λ = ItemKNN share)", label: "ranking hybrid val NDCG@10 by λ", nt: 4, h: 200, xEvery: 2, tf: v => v.toFixed(2), marks: [{ i: 8, v: 0.2297, t: "λ=0.8" }] });
+line("c-lam-rmse", D.lam.x.map(String), [{ n: "rating hybrid", c: "var(--series-2)", v: D.lam.rmse }],
+  { min: 0.87, max: 0.91, name: "val RMSE (λ = MF share)", label: "rating hybrid val RMSE by λ", nt: 4, h: 200, xEvery: 2, tf: v => v.toFixed(3), marks: [{ i: 8, v: 0.8747, t: "λ=0.8" }] });
+table("t-topn", ["Model", "Random HR@10", "Random NDCG@10", "Same-city HR@10", "Same-city NDCG@10"],
+  D.topn.map(r => [r[0], f3(r[1]), f3(r[2]), f3(r[3]), f3(r[4])]), 1, r => r[0] === "ItemKNN (improved)");
 
-// aspect·페르소나
-hchart("c-wg", D.wg, { min: 0, max: 0.3, name: "회귀 계수", label: "전역 aspect 가중치", nt: 3, labelW: 120, hl: ["rooms", "service"] });
-line("c-ridge", D.ridge.x, [{ n: "사용자별 가중치", c: "var(--accent)", v: D.ridge.y }],
-  { min: 0.44, max: 0.6, ref: D.ridge.global, name: "val RMSE", label: "λ별 val RMSE", nt: 4, h: 230, tf: v => v.toFixed(2) });
-table("t-persona", ["페르소나", "배정 사용자", ...D.aspects],
+// aspects and personas
+hchart("c-wg", D.wg, { min: 0, max: 0.3, name: "regression coefficient", label: "global aspect weights", nt: 3, labelW: 120, hl: ["rooms", "service"] });
+line("c-ridge", D.ridge.x, [{ n: "per-user weights", c: "var(--accent)", v: D.ridge.y }],
+  { min: 0.44, max: 0.6, ref: D.ridge.global, name: "val RMSE", label: "val RMSE by λ", nt: 4, h: 230, tf: v => v.toFixed(2) });
+table("t-persona", ["Persona", "Assigned users", ...D.aspects],
   D.persona.map(p => [p[0], p[1].toLocaleString(), ...p[2].map(f3)]), 1);
 
-// Kaggle 텍스트: 발산 색 (빨강 = 더 언급, 파랑 = 덜 언급, 회색 = 0)
+// Kaggle text: diverging colors (red = mentioned more, blue = mentioned less, gray = 0)
 const mt = document.getElementById("t-mention"), lim = 3;
-mt.innerHTML = "<thead><tr><th>여행 유형</th><th class='num'>리뷰</th>" + D.aspects.map(a => `<th class="num">${a}</th>`).join("") + "</tr></thead><tbody>" +
+mt.innerHTML = "<thead><tr><th>Trip type</th><th class='num'>Reviews</th>" + D.aspects.map(a => `<th class="num">${a}</th>`).join("") + "</tr></thead><tbody>" +
   D.mention.map(r => "<tr><td>" + r[0] + "</td><td class='num'>" + r[1].toLocaleString() + "</td>" + r[2].map(v => {
     const k = Math.min(Math.abs(v) / lim, 1) * 70, c = v >= 0 ? "var(--div-pos)" : "var(--div-neg)";
     return `<td class="heat" style="background:color-mix(in oklab, ${c} ${k.toFixed(0)}%, var(--div-mid))">${(v > 0 ? "+" : "") + v.toFixed(1)}</td>`;
   }).join("") + "</tr>").join("") + "</tbody>";
-table("t-gen", ["가중치", ...D.genCols], D.gen.map(g => [g[0], ...g[1].map(f3)]), 1, r => r[0] === "HotelRec 전역 가중치");
+table("t-gen", ["Weights", ...D.genCols], D.gen.map(g => [g[0], ...g[1].map(f3)]), 1, r => r[0] === "HotelRec global weights");
 
-// Kaggle 매칭
-hchart("c-match", D.match.filter(m => m[4] != null).map(m => [m[0], m[4], `호텔 스피어만 ${f3(m[5])} · 리뷰 RMSE ${f3(m[1])}`]),
-  { min: 0, max: 1, name: "피어슨 상관", label: "호텔 평균 점수와의 상관", nt: 4, labelW: 230, hl: ["MF (μ+b_i)"] });
-hchart("c-city", D.city.map(c => [c[0], c[1]]), { min: 0, max: 200, name: "매칭 호텔", label: "도시별 매칭 호텔 수", nt: 4, labelW: 110, vf: v => String(v), tf: v => String(Math.round(v)) });
-table("t-match", ["모델 (신규 사용자 예측)", "리뷰 RMSE", "리뷰 MAE", "리뷰 스피어만", "호텔 피어슨", "호텔 스피어만"],
+// Kaggle matching
+hchart("c-match", D.match.filter(m => m[4] != null).map(m => [m[0], m[4], `hotel Spearman ${f3(m[5])} · review RMSE ${f3(m[1])}`]),
+  { min: 0, max: 1, name: "Pearson correlation", label: "correlation with hotel mean scores", nt: 4, labelW: 230, hl: ["MF (μ+b_i)"] });
+hchart("c-city", D.city.map(c => [c[0], c[1]]), { min: 0, max: 200, name: "matched hotels", label: "matched hotels per city", nt: 4, labelW: 110, vf: v => String(v), tf: v => String(Math.round(v)) });
+table("t-match", ["Model (new-user prediction)", "Review RMSE", "Review MAE", "Review Spearman", "Hotel Pearson", "Hotel Spearman"],
   D.match.map(m => [m[0], ...m.slice(1).map(v => v == null ? "–" : f3(v))]), 1, r => r[0] === "MF (μ+b_i)");
 
-// 편차 기반 선호 (04·05)
-hchart("c-dev", D.dev, { min: 0.87, max: 0.91, dot: true, ref: 0.90523, name: "test RMSE", label: "단계별 test 세부 평점 RMSE",
-  nt: 4, labelW: 270, hl: ["+ β 관대함 + 개인 까다로움 (M=30)"], hl2: ["+ 관대함"], tf: v => v.toFixed(3) });
+// deviation-based preferences (04·05)
+hchart("c-dev", D.dev, { min: 0.87, max: 0.91, dot: true, ref: 0.90523, name: "test RMSE", label: "test sub-rating RMSE by step",
+  nt: 4, labelW: 300, hl: ["+ β leniency + personal strictness (M=30)"], hl2: ["+ leniency"], tf: v => v.toFixed(3) });
 line("c-shrink", D.shrink.x, [
-  { n: "관대함만", c: "var(--mark)", v: D.shrink.p1, mark: 3 },
-  { n: "관대함 + 개인 까다로움", c: "var(--accent)", v: D.shrink.p3 }],
-  { min: 0.87, max: 0.895, name: "val RMSE", label: "축소 강도 M별 val RMSE", nt: 5, h: 230, tf: v => v.toFixed(3),
-    marks: [{ i: 3, v: 0.87435, t: "M=30 선택" }] });
-hchart("c-beta", D.beta, { min: 0, max: 0.8, name: "β", label: "aspect별 관대함 계수", nt: 4, labelW: 120, hl: ["location"] });
-table("t-k", ["K", "실루엣", "가장 작은 군집", "val RMSE"],
+  { n: "leniency only", c: "var(--mark)", v: D.shrink.p1, mark: 3 },
+  { n: "leniency + personal strictness", c: "var(--accent)", v: D.shrink.p3 }],
+  { min: 0.87, max: 0.895, name: "val RMSE", label: "val RMSE by shrinkage strength M", nt: 5, h: 230, tf: v => v.toFixed(3),
+    marks: [{ i: 3, v: 0.87435, t: "M=30 chosen" }] });
+hchart("c-beta", D.beta, { min: 0, max: 0.8, name: "β", label: "per-aspect leniency coefficient", nt: 4, labelW: 120, hl: ["location"] });
+table("t-k", ["K", "Silhouette", "Smallest cluster", "val RMSE"],
   D.kcmp.map(r => [r[0], f3(r[1]), (r[2] * 100).toFixed(1) + "%", r[3].toFixed(5)]), 1, r => r[0] === 2);
-table("t-devp", ["페르소나", "사용자", "비율", "평균 관대함", "평균 평점", "평균 리뷰 수", ...D.aspects],
+table("t-devp", ["Persona", "Users", "Share", "Mean leniency", "Mean rating", "Mean reviews", ...D.aspects],
   D.devp.map(p => [p[0], p[1].toLocaleString(), p[2].toFixed(1) + "%", (p[3] > 0 ? "+" : "") + f3(p[3]), f3(p[4]), p[5].toFixed(2),
     ...p[6].map(v => (v > 0 ? "+" : "") + v.toFixed(3))]), 1);
 
-// 키워드 사전 점검 (09)·페르소나 비교 (10)
-hchart("c-sens", D.sens, { min: 0, max: 5, name: "최대 변화 (%p)", label: "키워드 민감도", nt: 5, labelW: 170,
+// keyword lexicon audit (09) and persona comparison (10)
+hchart("c-sens", D.sens, { min: 0, max: 5, name: "largest change (pp)", label: "keyword sensitivity", nt: 5, labelW: 170,
   hl: ["location · location", "cleanliness · clean"], vf: v => v.toFixed(2), tf: v => v.toFixed(0) });
-table("t-pcomp", ["사전", "페르소나", "Cramér's V", "상관: 동일 가중", "상관: 전역 가중치", "상관: 페르소나 가중치"],
-  D.pcomp.map(r => [r[0], r[1], f3(r[2]), f3(r[3]), f3(r[4]), f3(r[5])]), 2, r => r[1] === "편차 기반 (04, M=3)" && r[0] === "원본");
+table("t-pcomp", ["Lexicon", "Persona", "Cramér's V", "Corr.: equal weights", "Corr.: global weights", "Corr.: persona weights"],
+  D.pcomp.map(r => [r[0], r[1], f3(r[2]), f3(r[3]), f3(r[4]), f3(r[5])]), 2, r => r[1] === "deviation-based (04, M=3)" && r[0] === "original");
 
-// 편차 기반 선호의 추천 연결 (06)
+// plugging the deviation-based preferences into recommendation (06)
 line("c-tau", ["0", "5", "10", "20", "40", "80", "160", "320"],
-  [{ n: "Content(까다로움, 개인)", c: "var(--accent)", v: [.0671, .0674, .0676, .0679, .0690, .0712, .0729, .0728] }],
-  { min: 0.065, max: 0.075, name: "val NDCG@10", label: "τ별 val NDCG@10", nt: 4, h: 230, tf: v => v.toFixed(3),
-    marks: [{ i: 6, v: .0729, t: "τ=160 선택" }] });
-hchart("c-heavy", [["Content (aspect+text)", .1103], ["Content (까다로움, 개인)", .1195], ["Content (까다로움, 페르소나)", .1232],
-  ["Content (까다로움, 이력 적으면 페르소나)", .1195], ["MF", .1131]],
-  { min: 0, max: 0.15, name: "HR@10", label: "이력 20건 이상 사용자의 HR@10", nt: 3, labelW: 260,
-    hl: ["Content (까다로움, 페르소나)"], hl2: ["Content (aspect+text)"] });
-table("t-link", ["모델", "test RMSE", "무작위 HR@5", "무작위 NDCG@10", "같은 도시 HR@10", "같은 도시 NDCG@10"], [
+  [{ n: "Content(strictness, personal)", c: "var(--accent)", v: [.0671, .0674, .0676, .0679, .0690, .0712, .0729, .0728] }],
+  { min: 0.065, max: 0.075, name: "val NDCG@10", label: "val NDCG@10 by τ", nt: 4, h: 230, tf: v => v.toFixed(3),
+    marks: [{ i: 6, v: .0729, t: "τ=160 chosen" }] });
+hchart("c-heavy", [["Content (aspect+text)", .1103], ["Content (strictness, personal)", .1195], ["Content (strictness, persona)", .1232],
+  ["Content (strictness, persona if few reviews)", .1195], ["MF", .1131]],
+  { min: 0, max: 0.15, name: "HR@10", label: "HR@10 of users with 20+ reviews", nt: 3, labelW: 260,
+    hl: ["Content (strictness, persona)"], hl2: ["Content (aspect+text)"] });
+table("t-link", ["Model", "test RMSE", "Random HR@5", "Random NDCG@10", "Same-city HR@10", "Same-city NDCG@10"], [
   ["Content (aspect+text)", "0.952", "0.070", "0.065", "0.296", "0.143"],
-  ["Content (까다로움, 개인)", "0.945", "0.076", "0.067", "0.296", "0.142"],
-  ["Content (까다로움, 페르소나)", "0.931", "0.077", "0.068", "0.298", "0.143"],
-  ["Content (까다로움, 이력 적으면 페르소나)", "0.939", "0.078", "0.068", "0.293", "0.142"],
-  ["PersonaPopularity (회귀, K=3)", "–", "0.215", "0.172", "0.474", "0.251"],
-  ["PersonaPopularity (편차, K=2)", "–", "0.216", "0.172", "0.476", "0.251"]], 1,
-  r => r[0] === "Content (까다로움, 페르소나)");
+  ["Content (strictness, personal)", "0.945", "0.076", "0.067", "0.296", "0.142"],
+  ["Content (strictness, persona)", "0.931", "0.077", "0.068", "0.298", "0.143"],
+  ["Content (strictness, persona if few reviews)", "0.939", "0.078", "0.068", "0.293", "0.142"],
+  ["PersonaPopularity (regression, K=3)", "–", "0.215", "0.172", "0.474", "0.251"],
+  ["PersonaPopularity (deviation, K=2)", "–", "0.216", "0.172", "0.476", "0.251"]], 1,
+  r => r[0] === "Content (strictness, persona)");
 
-// 툴팁
+// tooltip
 const tip = document.getElementById("tip");
 document.addEventListener("mousemove", e => {
   const g = e.target.closest && e.target.closest("[data-tip]");
